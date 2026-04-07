@@ -11,11 +11,15 @@ const router: Router = Router();
 
 const createKeySchema = z.object({
     name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
+    scopes: z.array(z.string()).optional().default(['chat']),
+    quota: z.number().positive().optional(),
 });
 
 const createServiceKeySchema = z.object({
     name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
     userId: z.string().min(1, 'User ID is required'),
+    scopes: z.array(z.string()).optional().default(['chat']),
+    quota: z.number().positive().optional(),
 });
 
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
@@ -25,7 +29,7 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
             return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated'));
         }
 
-        const keys = await ApiKey.find({ userId }).select('name lastUsedAt createdAt');
+        const keys = await ApiKey.find({ userId }).select('name lastUsedAt createdAt scopes quota');
 
         res.json({
             success: true,
@@ -34,6 +38,8 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
                 name: k.name,
                 lastUsedAt: k.lastUsedAt,
                 createdAt: k.createdAt,
+                scopes: k.scopes,
+                quota: k.quota,
             })),
             timestamp: new Date(),
         });
@@ -45,14 +51,14 @@ router.get('/', authenticate, async (req: Request, res: Response, next: NextFunc
 
 router.post('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { name } = createKeySchema.parse(req.body);
+        const { name, scopes, quota } = createKeySchema.parse(req.body);
         const userId = req.user?.userId;
         if (!userId) {
             return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated'));
         }
 
         const key = generateApiKey();
-        const apiKey = await ApiKey.create({ key, name, userId });
+        const apiKey = await ApiKey.create({ key, name, userId, scopes, quota });
 
         res.status(201).json({
             success: true,
@@ -61,6 +67,8 @@ router.post('/', authenticate, async (req: Request, res: Response, next: NextFun
                 name: apiKey.name,
                 key: apiKey.key,
                 createdAt: apiKey.createdAt,
+                scopes: apiKey.scopes,
+                quota: apiKey.quota,
             },
             timestamp: new Date(),
         });
@@ -105,7 +113,7 @@ router.delete('/:id', authenticate, async (req: Request, res: Response, next: Ne
 // POST /api/keys/service - Create service account API key (admin only)
 router.post('/service', authenticate, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { name, userId } = createServiceKeySchema.parse(req.body);
+        const { name, userId, scopes, quota } = createServiceKeySchema.parse(req.body);
         const adminUserId = req.user?.userId;
 
         if (!adminUserId) {
@@ -125,7 +133,7 @@ router.post('/service', authenticate, async (req: Request, res: Response, next: 
         }
 
         const key = generateApiKey();
-        const apiKey = await ApiKey.create({ key, name, userId });
+        const apiKey = await ApiKey.create({ key, name, userId, scopes, quota });
 
         res.status(201).json({
             success: true,
@@ -135,6 +143,8 @@ router.post('/service', authenticate, async (req: Request, res: Response, next: 
                 key: apiKey.key,
                 userId: apiKey.userId,
                 createdAt: apiKey.createdAt,
+                scopes: apiKey.scopes,
+                quota: apiKey.quota,
             },
             timestamp: new Date(),
         });
