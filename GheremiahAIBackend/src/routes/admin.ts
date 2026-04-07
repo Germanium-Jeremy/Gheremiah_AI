@@ -3,7 +3,7 @@ import { authenticate } from '../middleware/auth';
 import { HttpException } from '../middleware/error-handler';
 import { logger } from '../utils/logger';
 import { ErrorCode } from '@gheremiah-ai/shared';
-import { SystemConfig } from '../models/SystemConfig';
+import { SystemConfig } from '../models';
 
 const router: Router = Router();
 
