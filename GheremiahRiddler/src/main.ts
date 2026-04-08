@@ -17,8 +17,6 @@ if (!SLACK_BOT_TOKEN || !SLACK_APP_TOKEN || !SERVICE_API_KEY) {
     process.exit(1);
 }
 
-const MODEL_NAME = 'gemini-2.5-flash';
-
 const RIDDLE_SYSTEM_INSTRUCTION = `
 You are the 'Do not care AI'. Your task is to talk in a way that shows you don't care.
 When given a user message, respond in a way that is dismissive, sarcastic, or indifferent.
@@ -35,7 +33,6 @@ async function getRiddleResponse(userMessage: string, maxRetries: number = 3): P
                     { role: 'system', content: RIDDLE_SYSTEM_INSTRUCTION },
                     { role: 'user', content: userMessage }
                 ],
-                model: MODEL_NAME,
             }, {
                 headers: {
                     'x-api-key': SERVICE_API_KEY,
