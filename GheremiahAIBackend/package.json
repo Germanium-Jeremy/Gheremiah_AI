@@ -10,9 +10,10 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@ai-sdk/google": "^1.0.0",
+    "@ai-sdk/google": "^4.0.44",
     "@gheremiah-ai/shared": "*",
-    "ai": "^4.0.0",
+    "ai": "^7.0.66",
+    "ai-sdk-ollama": "^4.1.0",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
