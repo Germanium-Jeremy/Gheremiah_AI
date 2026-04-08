@@ -280,28 +280,60 @@ export function activate(context: vscode.ExtensionContext) {
                 try {
                     const response = await axios.post(`${BACKEND_API_URL}/api/chat`, {
                         messages: [{ role: 'user', content: userPrompt }],
-                        model: 'gemini-2.5-flash',
+                        stream: true,
                     }, {
                         headers: {
                             'Authorization': `Bearer ${ACCESS_TOKEN}`,
                         },
+                        responseType: 'stream'
                     });
 
-                    if (response.data.success) {
-                        const reply = response.data.data.content;
-                        panel.webview.postMessage({ command: 'gheremiahResponse', text: reply });
-                    } else {
-                        panel.webview.postMessage({ command: 'gheremiahResponse', text: `Error: ${response.data.error?.message || 'Failed to get response'}` });
-                    }
+                    const stream = response.data;
+                    let fullText = '';
+
+                    stream.on('data', (chunk: Buffer) => {
+                        const lines = chunk.toString().split('\\n\\n');
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const dataStr = line.slice(6);
+                                try {
+                                    const data = JSON.parse(dataStr);
+                                    if (data.type === 'content') {
+                                        fullText += data.content;
+                                        panel.webview.postMessage({
+                                            command: 'gheremiahResponseChunk',
+                                            text: data.content
+                                        });
+                                    } else if (data.type === 'usage') {
+                                        console.log('Usage info received:', data.usage);
+                                    }
+                                } catch (e) {
+                                    // Ignore non-JSON lines or usage data
+                                }
+                            }
+                        }
+                    });
+
+                    stream.on('end', () => {
+                        panel.webview.postMessage({
+                            command: 'gheremiahResponseEnd',
+                            text: fullText
+                        });
+                    });
+
+                    stream.on('error', (err: any) => {
+                        console.error('Stream error:', err);
+                        panel.webview.postMessage({ command: 'gheremiahResponse', text: 'Error: Stream interrupted' });
+                    });
 
                 } catch (error) {
                     console.error('API Error:', error);
                     let errorMessage = 'Sorry, I encountered an error. ';
-                    
+
                     if (axios.isAxiosError(error) && error.response) {
                         const { status } = error.response;
                         const apiErrorMessage = (error.response.data.error as any)?.message;
-                        
+
                         if (status === 401) {
                             errorMessage = 'Authentication failed. Please sign in again.';
                         } else if (status === 429) {
@@ -320,7 +352,7 @@ export function activate(context: vscode.ExtensionContext) {
                     } else {
                         errorMessage += 'Please check your connection and try again.';
                     }
-                    
+
                     panel.webview.postMessage({ command: 'gheremiahResponse', text: errorMessage });
                     console.warn("Gheremiah AI: API request failed. Check console for details.", error);
                 }
