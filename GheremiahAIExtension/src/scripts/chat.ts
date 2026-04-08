@@ -22,6 +22,7 @@ let sendButton: HTMLButtonElement | null = null;
 
 let isWaitingForResponse = false;
 let isAuthenticated = false;
+let currentBotMessageText = '';
 
 /**
  * Show signin view
@@ -246,6 +247,35 @@ function initializeChat(): void {
                 showChatView();
             } else {
                 showSigninView();
+            }
+        } else if (message.command === 'gheremiahResponseChunk') {
+            if (!messageHistory) return;
+
+            if (currentBotMessageText === '') {
+                // First chunk: remove typing indicator and add initial bot message
+                removeTypingIndicator();
+                addMessage('', 'bot');
+            }
+
+            currentBotMessageText += message.text;
+
+            // Find the last bot message and update its content
+            const lastMessage = messageHistory.lastElementChild;
+            if (lastMessage && lastMessage.querySelector('.bot-message')) {
+                const messageText = lastMessage.querySelector('.message-text') as HTMLElement;
+                if (messageText) {
+                    messageText.innerHTML = parseMarkdown(currentBotMessageText);
+                    messageHistory.scrollTop = messageHistory.scrollHeight;
+                }
+            }
+        } else if (message.command === 'gheremiahResponseEnd') {
+            currentBotMessageText = '';
+            // Re-enable input
+            isWaitingForResponse = false;
+            if (sendButton) sendButton.disabled = false;
+            if (userInput) {
+                userInput.disabled = false;
+                userInput.focus();
             }
         } else if (message.command === 'gheremiahResponse') {
             removeTypingIndicator();
