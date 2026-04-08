@@ -82,29 +82,65 @@ function ChatPageContent() {
 
         try {
             const apiKey = localStorage.getItem('apiKey');
-            
+
             if (!apiKey) {
                 setMessages(prev => [...prev, { role: 'assistant', content: 'Error: No API key found. Please create an API key first.' }]);
                 setLoading(false);
                 return;
             }
 
-            const data = await api.post('/api/chat', {
-                messages: [
-                    ...messages,
-                    { role: 'user', content: userMessage }
-                ],
-                model: 'gemini-2.5-flash',
-            }, {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat`, {
+                method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'x-api-key': apiKey,
                 },
+                body: JSON.stringify({
+                    messages: [
+                        ...messages,
+                        { role: 'user', content: userMessage }
+                    ],
+                    stream: true,
+                }),
             });
 
-            if (data.success) {
-                setMessages(prev => [...prev, { role: 'assistant', content: data.data.content }]);
-            } else {
-                setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error?.message || 'Failed to get response'}` }]);
+            if (!response.ok) {
+                throw new Error('Failed to connect to server');
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let assistantMessage = '';
+
+            setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+
+            while (true) {
+                const { done, value } = await reader!.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value);
+                const lines = chunk.split('\\n\\n');
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const dataStr = line.slice(6);
+                    try {
+                        const data = JSON.parse(dataStr);
+                        if (data.type === 'content') {
+                            assistantMessage += data.content;
+                            setMessages(prev => {
+                                const newMessages = [...prev];
+                                newMessages[newMessages.length - 1] = {
+                                    role: 'assistant',
+                                    content: assistantMessage
+                                };
+                                return newMessages;
+                            });
+                        }
+                    } catch (e) {
+                        console.error('Error parsing SSE chunk:', e);
+                    }
+                }
             }
         } catch (err) {
             setMessages(prev => [...prev, { role: 'assistant', content: 'Error: Failed to connect to server' }]);
