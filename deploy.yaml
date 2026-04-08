@@ -1,0 +1,67 @@
+- hosts: web
+  become: yes
+
+  vars:
+    app_root: /home/nelson/Documents/Brainacs/GheremiahAI
+
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - nginx
+          - git
+          - nodejs
+          - npm
+        update_cache: yes
+        state: present
+
+    - name: Install PM2 globally
+      npm:
+        name: pm2
+        global: yes
+
+    - name: Create app directories
+      file:
+        path: "{{ app_root }}/{{ item }}"
+        state: directory
+      loop:
+        - backend
+        - frontend
+
+    - name: Clone backend repo
+      git:
+        repo: https://github.com/user/myRepoBackend.git
+        dest: "{{ app_root }}/backend"
+        version: main
+
+    - name: Install backend dependencies
+      command: npm install
+      args:
+        chdir: "{{ app_root }}/backend"
+
+    - name: Build frontend
+      git:
+        repo: https://github.com/user/myRepoFrontend.git
+        dest: "{{ app_root }}/frontend"
+        version: main
+
+    - name: Install frontend deps and build
+      shell: |
+        npm install
+        npm run build
+      args:
+        chdir: "{{ app_root }}/frontend"
+
+    - name: Copy frontend build to nginx dir
+      copy:
+        src: "{{ app_root }}/frontend/build/"
+        dest: /var/www/html/
+        remote_src: yes
+
+    - name: Start backend with PM2
+      command: pm2 start app.js --name backend
+      args:
+        chdir: "{{ app_root }}/backend"
+
+    - name: Save PM2 processes
+      command: pm2 save
