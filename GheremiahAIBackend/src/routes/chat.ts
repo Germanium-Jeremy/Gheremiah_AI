@@ -1,12 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, generateText } from 'ai';
 import { authenticateAny } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rate-limit';
 import { HttpException } from '../middleware/error-handler';
-import { UsageLog } from '../models/UsageLog';
+import { UsageLog, SystemConfig } from '../models';
+import { ProviderFactory } from '../providers/ProviderFactory';
 import type { ChatResponse, StreamChunk } from '@gheremiah-ai/shared';
 import { ErrorCode } from '@gheremiah-ai/shared';
 
@@ -24,17 +24,13 @@ const chatRequestSchema = z.object({
         content: z.string().min(1),
     })).min(1),
     stream: z.boolean().optional().default(false),
-    model: z.enum(['gemini-2.5-flash', 'gemini-2.0-pro']).optional().default('gemini-2.5-flash'),
+    model: z.string().optional(),
     maxTokens: z.number().positive().optional(),
     temperature: z.number().min(0).max(2).optional(),
     systemPrompt: z.string().optional(),
 });
 
 router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Response, next: NextFunction) => {
-    const google = createGoogleGenerativeAI({
-        apiKey: process.env.GOOGLE_API_KEY
-    });
-
     try {
         const parsed = chatRequestSchema.parse(req.body);
         const userId = req.user?.userId;
@@ -47,11 +43,19 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
         const maxTokens = parsed.maxTokens ?? (tier === 'free' ? 2000 : 8000);
         const systemPrompt = parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
+        // Determine active provider from config
+        let config = await SystemConfig.findOne();
+        const providerName = config?.activeProvider || 'gemini';
+        const provider = ProviderFactory.getProvider(providerName);
+        const model = provider.getModel(parsed.model);
+
         // Track usage
+        const usageType = req.user?.apiKey ? 'third-party' : 'first-party';
         const usageEntry = await UsageLog.create({
             userId,
             action: 'chat',
             tokensUsed: 0,
+            usageType,
         });
 
         if (parsed.stream) {
@@ -60,7 +64,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             res.setHeader('Connection', 'keep-alive');
 
             const result = await streamText({
-                model: google(parsed.model),
+                model: model,
                 messages: parsed.messages,
                 maxTokens,
                 system: systemPrompt,
@@ -85,7 +89,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             res.end();
         } else {
             const result = await generateText({
-                model: google(parsed.model),
+                model: model,
                 messages: parsed.messages,
                 maxTokens,
                 system: systemPrompt,
@@ -96,7 +100,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             const response: ChatResponse = {
                 id: randomUUID(),
                 content: result.text,
-                model: parsed.model,
+                model: parsed.model || (providerName === 'gemini' ? 'gemini-2.5-flash' : 'llama3'),
                 timestamp: new Date(),
                 usage: usage ? {
                     promptTokens: usage.promptTokens,
