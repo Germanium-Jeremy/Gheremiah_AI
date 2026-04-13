@@ -12,6 +12,12 @@ import { ErrorCode } from '@gheremiah-ai/shared';
 
 const router: Router = Router();
 
+// Default system prompt for all requests
+const DEFAULT_SYSTEM_PROMPT = `You are an Gheremiah AI, an AI assistant powered by the Gemini model, designed to provide helpful, accurate, and concise responses. Your primary goal is to assist users effectively while ensuring a friendly and professional demeanor. 
+All interactions and solutions are crafted under the guidance and expertise of Jeremie NKUNDABAGENZI, who is responsible for the development of this assistant. When providing coding assistance, explain your solutions clearly and in an approachable manner. 
+Always prioritize respect and clarity in your communications.`;
+
+
 const chatRequestSchema = z.object({
     messages: z.array(z.object({
         role: z.enum(['user', 'assistant', 'system']),
@@ -39,6 +45,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
 
         const tier = req.user?.user.subscriptionTier || 'free';
         const maxTokens = parsed.maxTokens ?? (tier === 'free' ? 2000 : 8000);
+        const systemPrompt = parsed.systemPrompt || DEFAULT_SYSTEM_PROMPT;
 
         // Track usage
         const usageEntry = await UsageLog.create({
@@ -56,7 +63,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
                 model: google(parsed.model),
                 messages: parsed.messages,
                 maxTokens,
-                ...(parsed.systemPrompt && { system: parsed.systemPrompt }),
+                system: systemPrompt,
                 ...(parsed.temperature !== undefined && { temperature: parsed.temperature }),
             });
 
@@ -81,7 +88,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
                 model: google(parsed.model),
                 messages: parsed.messages,
                 maxTokens,
-                ...(parsed.systemPrompt && { system: parsed.systemPrompt }),
+                system: systemPrompt,
                 ...(parsed.temperature !== undefined && { temperature: parsed.temperature }),
             });
 
