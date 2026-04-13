@@ -1,15 +1,19 @@
 {
-  "name": "@gheremiah-ai/extension",
-  "displayName": "Gheremiah AI",
+  "name": "gheremiah-ai-extension",
+  "displayName": "Gheremiah AI Assistant",
   "description": "An AI-powered chat bot for Python, JS, and TS powered by Gemini 2.5 Flash",
   "version": "0.0.1",
-  "publisher": "NKUNDABAGENZI Jeremie",
+  "publisher": "Jeremie",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "Chat",
-    "Machine Learning"
+    "Machine Learning",
+    "VS code",
+    "Extension",
+    "Learn Making VS code extension",
+    "AI APIs"
   ],
   "activationEvents": [
     "onCommand:gheremiahai.start"
@@ -28,7 +32,17 @@
       "gemini.apiKey": {
         "type": "string",
         "default": "",
-        "description": "Your Gemini API key from Google AI Studio"
+        "description": "Gemini API key from Google AI Studio"
+      },
+      "url.backend": {
+        "type": "string",
+        "default": "https://gheremiah-ai-backend.onrender.com",
+        "description": "Backend Url"
+      },
+      "url.frontend": {
+        "type": "string",
+        "default": "https://gheremiahai.vercel.app",
+        "description": "Frontend Url"
       }
     }
   }
@@ -52,7 +66,7 @@
   "license": "ISC",
   "repository": {
     "type": "git",
-    "url": "https://github.com/jeremieNK/gheremiahaiextension.git"
+    "url": "https://github.com/Germanium-Jeremy/Gheremiah_AI.git"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
