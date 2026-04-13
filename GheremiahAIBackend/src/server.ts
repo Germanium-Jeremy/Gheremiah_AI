@@ -11,6 +11,7 @@ import chatRoutes from './routes/chat';
 import apiKeyRoutes from './routes/api-keys';
 import extensionAuthRoutes from './routes/extension-auth';
 import adminRoutes from './routes/admin';
+import createAdmin from './scripts/create-admin'
 
 dotenv.config();
 
@@ -54,6 +55,9 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/keys', apiKeyRoutes);
 app.use('/api/extension-auth', extensionAuthRoutes);
 app.use('/api/admin', adminRoutes);
+app.get('/admin/create', (req: Request, res: Response) => {
+    createAdmin('vieirra@gheremiah.ai', '1234567890').then(() => res.status(200).json({ message: 'Admin created' })).catch((err) => res.status(500).json({ error: err.message }));
+});
 app.use('*', (req: Request, res: Response) => res.status(404).json({ error: 'Page Not found' }));
 
 // Error handling middleware (must be last)
