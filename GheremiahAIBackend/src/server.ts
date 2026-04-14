@@ -17,8 +17,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Trust proxy for Render and other reverse proxies
-app.set('trust proxy', true);
+// Trust proxy for Render (1 hop)
+app.set('trust proxy', 1);
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/gheremiah-ai';
 
 // Connect to MongoDB
