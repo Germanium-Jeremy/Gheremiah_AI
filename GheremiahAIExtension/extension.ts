@@ -30,7 +30,7 @@ const getApiKey = (context: vscode.ExtensionContext): string => {
 let GEMINI_API_KEY = '';
 let GEMINI_API_URL = '';
 let ACCESS_TOKEN = '';
-const BACKEND_API_URL = 'http://localhost:8000';
+const BACKEND_API_URL = process.env.BACKEND_URL;
 let localServer: http.Server | null = null;
 let authCallbackPort = 0;
 
@@ -241,7 +241,7 @@ export function activate(context: vscode.ExtensionContext) {
         panel.webview.onDidReceiveMessage(async (message) => {
             if (message.command === 'openSignin') {
                 // Open browser to extension authorization page with callback port
-                const authUrl = `http://localhost:3000/extension-auth?vscode=true&callbackPort=${authCallbackPort}`;
+                const authUrl = `${process.env.FRONTEND_URL}/extension-auth?vscode=true&callbackPort=${authCallbackPort}`;
                 vscode.env.openExternal(vscode.Uri.parse(authUrl));
             } else if (message.command === 'checkAuth') {
                 // Re-check authentication and send state
