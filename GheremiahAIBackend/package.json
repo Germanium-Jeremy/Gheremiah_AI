@@ -5,8 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/server.ts",
-    "build": "tsc",
-    "build:with-shared": "cd ../shared && npm run build && cd ../GheremiahAIBackend && tsc",
+    "build": "cd ../shared && npm run build && cd ../GheremiahAIBackend && tsc",
     "start": "node dist/server.js",
     "clean": "rimraf dist"
   },
