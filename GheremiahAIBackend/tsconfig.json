@@ -14,7 +14,8 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "6.0",
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["src/**/*.ts", "prisma/**/*.prisma"],
   "exclude": ["node_modules", "dist"]
