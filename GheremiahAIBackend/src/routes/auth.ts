@@ -197,7 +197,7 @@ router.get('/verify-email', async (req: Request, res: Response, next: NextFuncti
         });
 
         // Redirect to frontend with accessToken as query param
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'; // change this
         res.redirect(`${frontendUrl}/chat?verified=true&token=${accessToken}`);
     } catch (error) {
         if (error instanceof HttpException) return next(error);
