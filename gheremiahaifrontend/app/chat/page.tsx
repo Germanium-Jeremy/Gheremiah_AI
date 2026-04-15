@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import MarkdownRenderer from '../../components/MarkdownRenderer';
@@ -11,7 +11,7 @@ interface Message {
     content: string;
 }
 
-export default function ChatPage() {
+function ChatPageContent() {
     const router = useRouter();
      const searchParams = useSearchParams()
     const [messages, setMessages] = useState<Message[]>([]);
@@ -307,5 +307,13 @@ export default function ChatPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function ChatPage() {
+    return (
+        <Suspense fallback={<div className="h-screen flex items-center justify-center">Loading...</div>}>
+            <ChatPageContent />
+        </Suspense>
     );
 }
