@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api } from '../../lib/api';
 
-export default function ExtensionAuthPage() {
+function ExtensionAuthPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [extensionId, setExtensionId] = useState('');
@@ -204,5 +204,13 @@ export default function ExtensionAuthPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ExtensionAuthPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+            <ExtensionAuthPageContent />
+        </Suspense>
     );
 }
