@@ -31,3 +31,5 @@ coverage/
 
 notes.txt
 */logs/**/*
+*.rest
+DEPLOYMENT.md
