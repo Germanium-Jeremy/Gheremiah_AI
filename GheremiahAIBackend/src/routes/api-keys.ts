@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { ApiKey } from '../models/ApiKey';
+import { User } from '../models/User';
 import { authenticate } from '../middleware/auth';
 import { generateApiKey } from '@gheremiah-ai/shared';
 import { HttpException } from '../middleware/error-handler';
@@ -10,6 +11,11 @@ const router: Router = Router();
 
 const createKeySchema = z.object({
     name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
+});
+
+const createServiceKeySchema = z.object({
+    name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
+    userId: z.string().min(1, 'User ID is required'),
 });
 
 router.get('/', authenticate, async (req: Request, res: Response, next: NextFunction) => {
@@ -93,6 +99,53 @@ router.delete('/:id', authenticate, async (req: Request, res: Response, next: Ne
     } catch (error) {
         if (error instanceof HttpException) return next(error);
         return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to delete API key'));
+    }
+});
+
+// POST /api/keys/service - Create service account API key (admin only)
+router.post('/service', authenticate, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { name, userId } = createServiceKeySchema.parse(req.body);
+        const adminUserId = req.user?.userId;
+
+        if (!adminUserId) {
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated'));
+        }
+
+        // Check if requester is admin
+        const adminUser = await User.findById(adminUserId);
+        if (!adminUser || adminUser.role !== 'admin') {
+            return next(new HttpException(403, ErrorCode.FORBIDDEN, 'Admin access required'));
+        }
+
+        // Verify target user exists
+        const targetUser = await User.findById(userId);
+        if (!targetUser) {
+            return next(new HttpException(404, ErrorCode.NOT_FOUND, 'Target user not found'));
+        }
+
+        const key = generateApiKey();
+        const apiKey = await ApiKey.create({ key, name, userId });
+
+        res.status(201).json({
+            success: true,
+            data: {
+                id: (apiKey._id as any).toString(),
+                name: apiKey.name,
+                key: apiKey.key,
+                userId: apiKey.userId,
+                createdAt: apiKey.createdAt,
+            },
+            timestamp: new Date(),
+        });
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
+                errors: error.errors,
+            }));
+        }
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to create service API key'));
     }
 });
 
