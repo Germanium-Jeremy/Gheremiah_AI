@@ -1,20 +1,22 @@
-import { GoogleGenAI } from '@google/genai';
 import { App } from '@slack/bolt';
-import SocketModeHandler from '@slack/bolt';
+// import SocketModeHandler from '@slack/bolt';
 import dotenv from 'dotenv';
+import axios from 'axios';
 
 dotenv.config();
 
-const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN!;
-const SLACK_APP_TOKEN = process.env.SLACK_APP_TOKEN!;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
+const SLACK_BOT_TOKEN = process.env.SLACK_BOT_TOKEN || '';
+const SLACK_APP_TOKEN = process.env.SLACK_APP_TOKEN || '';
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:8000';
+const SERVICE_API_KEY = process.env.SERVICE_API_KEY || '';
+const SIGNING_SECRET = process.env.SIGNING_SECRET || '';
+const ENV = process.env.ENV || '';
 
-if (!SLACK_BOT_TOKEN || !SLACK_APP_TOKEN || !GEMINI_API_KEY) {
+if (!SLACK_BOT_TOKEN || !SLACK_APP_TOKEN || !SERVICE_API_KEY) {
     console.error('Missing required environment variables. Check .env file.');
     process.exit(1);
 }
 
-const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-2.5-flash';
 
 const RIDDLE_SYSTEM_INSTRUCTION = `
@@ -28,25 +30,34 @@ Try to add some riddle responses in the mix, but they should still sound like th
 async function getRiddleResponse(userMessage: string, maxRetries: number = 3): Promise<string> {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-            const response = await genAI.models.generateContent({
+            const response = await axios.post(`${BACKEND_API_URL}/api/chat`, {
+                messages: [
+                    { role: 'system', content: RIDDLE_SYSTEM_INSTRUCTION },
+                    { role: 'user', content: userMessage }
+                ],
                 model: MODEL_NAME,
-                contents: userMessage,
-                config: {
-                    systemInstruction: RIDDLE_SYSTEM_INSTRUCTION,
+            }, {
+                headers: {
+                    'x-api-key': SERVICE_API_KEY,
                 },
             });
-            const { text } = response;
-            return text || 'Hmm, the riddle is forming... but the words are stuck. Ask me again?';
+
+            if (response.data.success) {
+                return response.data.data.content || 'Hmm, the riddle is forming... but the words are stuck. Ask me again?';
+            } else {
+                console.error('Backend API error:', response.data.error);
+                return 'My riddling circuits are jammed! Try again in a moment.';
+            }
         } catch (error: any) {
             const errorStr = String(error);
 
-            if (errorStr.includes('429')) {
+            if (error.response?.status === 429) {
                 const waitSeconds = Math.pow(2, attempt);
                 console.log(`Rate limited. Waiting ${waitSeconds}s before retry ${attempt + 1}/${maxRetries}...`);
                 await new Promise(resolve => setTimeout(resolve, waitSeconds * 1000));
                 continue;
             } else {
-                console.error('Error calling Gemini API:', error);
+                console.error('Error calling backend API:', error);
                 return 'My riddling circuits are jammed! Try again in a moment.';
             }
         }
@@ -55,10 +66,21 @@ async function getRiddleResponse(userMessage: string, maxRetries: number = 3): P
     return "I'm being bombarded with riddles! Give me a moment to catch my breath, then try again.";
 }
 
-const app = new App({
-    token: SLACK_BOT_TOKEN,
-});
+let app: App;
 
+if (ENV === 'production') {
+    app = new App({
+        token: SLACK_BOT_TOKEN,
+        signingSecret: SIGNING_SECRET
+    });
+} else {   
+    app = new App({
+        token: SLACK_BOT_TOKEN,
+        socketMode: true,
+        appToken: SLACK_APP_TOKEN,
+    });
+}
+    
 app.event('app_mention', async ({ event, say }) => {
     let userMessage: string = event.text;
 
@@ -97,8 +119,11 @@ app.event('message', async ({ event, client, say }) => {
 });
 
 (async () => {
-    const handler = new SocketModeHandler({ appToken: SLACK_APP_TOKEN });
-    console.log('🤖 Riddle Master is running!');
-    console.log('💡 Bot will send messages in the MAIN channel (not as threaded replies)');
-    await handler.start();
+    try {
+        await app.start()
+        console.log('🤖 Riddle Master is running!');
+        console.log('💡 Bot will send messages in the MAIN channel (not as threaded replies)');
+    } catch(error) {
+        console.warn("Failed to start app: ", error)
+    }
 })();
