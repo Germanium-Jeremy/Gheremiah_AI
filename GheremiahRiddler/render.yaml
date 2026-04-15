@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: gheremiah-ai-slackbot
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_APP_TOKEN
+        sync: false
+      - key: BACKEND_API_URL
+        sync: false
+      - key: SERVICE_API_KEY
+        sync: false
+      - key: ENV
+        value: production
+      - key: SIGNING_SECRET
+        sync: false
