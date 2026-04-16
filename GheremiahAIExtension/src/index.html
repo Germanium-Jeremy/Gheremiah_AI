@@ -9,42 +9,73 @@
     <link href="package-style.css" rel="stylesheet">
 </head>
 <body class="bg-vscode-bg text-vscode-text h-screen flex flex-col p-4">
-    <!-- Header -->
-    <div class="border-b border-vscode-border pb-4 mb-4">
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-            🤖 Gheremiah AI Assistant
-        </h1>
-        <p class="text-sm text-gray-400 mt-1">Powered by Gemini 2.5 Flash</p>
-    </div>
+    <div id="app-container"></div>
 
-    <!-- Message History -->
-    <div id="message-history" class="flex-1 overflow-y-auto mb-4 space-y-3 custom-scrollbar">
-        <div class="text-center text-gray-400 text-sm mt-8">
-            Ask me anything about Python, JavaScript, or TypeScript!
+    <!-- Signin View (shown when not authenticated) -->
+    <template id="signin-view">
+        <div class="flex flex-col items-center justify-center h-full">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent mb-4">
+                    🤖 Gheremiah AI
+                </h1>
+                <p class="text-gray-400 mb-8">Sign in to start chatting with AI</p>
+                <button 
+                    id="signin-button"
+                    class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-16 py-3 rounded-lg hover:opacity-90 transition-all hover:scale-105 font-semibold mb-4"
+                >
+                    Sign in to Gheremiah AI
+                </button>
+                <button 
+                    id="refresh-auth-button"
+                    class="text-sm text-gray-400 hover:text-gray-300 underline"
+                >
+                    I've already signed in - Refresh
+                </button>
+            </div>
         </div>
-    </div>
+    </template>
 
-    <!-- Input Area -->
-    <div class="border-t border-vscode-border pt-4">
-        <div class="flex gap-2">
-            <input 
-                type="text" 
-                id="user-input" 
-                placeholder="Ask about code, debugging, or best practices..."
-                class="flex-1 bg-vscode-input text-vscode-text border border-vscode-border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-            >
-            <button 
-                id="send-button" 
-                class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:opacity-90 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                Send
-            </button>
+    <!-- Chat View (shown when authenticated) -->
+    <template id="chat-view">
+        <div class="flex flex-col h-full">
+            <!-- Header -->
+            <div class="border-b border-vscode-border pb-4 mb-4">
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+                    🤖 Gheremiah AI Assistant
+                </h1>
+                <p class="text-sm text-gray-400 mt-1">Powered by Gemini 2.5 Flash</p>
+            </div>
+
+            <!-- Message History -->
+            <div id="message-history" class="flex-1 overflow-y-auto mb-4 space-y-3 custom-scrollbar">
+                <div class="text-center text-gray-400 text-sm mt-8">
+                    Ask me anything about Python, JavaScript, or TypeScript!
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="border-t border-vscode-border pt-4">
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="user-input" 
+                        placeholder="Ask about code, debugging, or best practices..."
+                        class="flex-1 bg-vscode-input text-vscode-text border border-vscode-border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                    >
+                    <button 
+                        id="send-button" 
+                        class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:opacity-90 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        Send
+                    </button>
+                </div>
+                <div class="text-xs text-gray-400 mt-2">
+                    <kbd class="px-1 py-0.5 bg-gray-700 rounded">Enter</kbd> to send &sol;
+                    <kbd class="px-1 py-0.5 bg-gray-700 rounded">Shift + Enter</kbd> for new line
+                </div>
+            </div>
         </div>
-        <div class="text-xs text-gray-400 mt-2">
-            <kbd class="px-1 py-0.5 bg-gray-700 rounded">Enter</kbd> to send &sol;
-            <kbd class="px-1 py-0.5 bg-gray-700 rounded">Shift + Enter</kbd> for new line
-        </div>
-    </div>
+    </template>
 
     <!-- Message Templates -->
     <template id="user-message-template">
