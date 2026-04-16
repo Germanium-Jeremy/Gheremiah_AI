@@ -6,6 +6,7 @@ import { HttpException } from '../middleware/error-handler';
 import { authRateLimiter } from '../middleware/rate-limit';
 import { ErrorCode } from '@gheremiah-ai/shared';
 import { v4 as uuidv4 } from 'uuid';
+import { addExtensionToken } from '../middleware/auth';
 
 const router: Router = Router();
 
@@ -17,6 +18,7 @@ const authCodes = new Map<string, {
     expiresAt: Date;
 }>();
 
+// In-memory store for extension access tokens (in production, use Redis or database)
 const authTokens = new Map<string, {
     userId: string;
     extensionId: string;
@@ -30,8 +32,61 @@ const authorizeSchema = z.object({
     redirectUri: z.string().url('Invalid redirect URI'),
 });
 
+const createTokenSchema = z.object({
+    extensionId: z.string().min(1, 'Extension ID is required'),
+    permissions: z.array(z.string()).min(1, 'At least one permission is required'),
+});
+
 const callbackSchema = z.object({
     code: z.string().min(1, 'Authorization code is required'),
+});
+
+// POST /api/extension-auth/create-token - Create extension access token directly
+router.post('/create-token', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header'));
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const payload = verifyToken(token);
+        if (!payload) {
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid token'));
+        }
+
+        const { extensionId, permissions } = createTokenSchema.parse(req.body);
+
+        // Generate access token
+        const accessToken = uuidv4();
+        const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+
+        // Store in shared token store for validation
+        addExtensionToken(accessToken, {
+            userId: payload.userId,
+            extensionId,
+            permissions,
+            expiresAt,
+        });
+
+        res.json({
+            success: true,
+            data: {
+                accessToken,
+                expiresAt,
+                permissions,
+            },
+            timestamp: new Date(),
+        });
+    } catch (error) {
+        if (error instanceof z.ZodError) {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
+                errors: error.errors,
+            }));
+        }
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to create access token'));
+    }
 });
 
 // POST /api/extension-auth/authorize - Initiate authorization flow
