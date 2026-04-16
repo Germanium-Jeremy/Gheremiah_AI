@@ -15,11 +15,51 @@ declare function acquireVsCodeApi(): {
 };
 
 const vscode = acquireVsCodeApi();
-const messageHistory = document.getElementById('message-history') as HTMLElement;
-const userInput = document.getElementById('user-input') as HTMLInputElement;
-const sendButton = document.getElementById('send-button') as HTMLButtonElement;
+const appContainer = document.getElementById('app-container') as HTMLElement;
+let messageHistory: HTMLElement | null = null;
+let userInput: HTMLInputElement | null = null;
+let sendButton: HTMLButtonElement | null = null;
 
 let isWaitingForResponse = false;
+let isAuthenticated = false;
+
+/**
+ * Show signin view
+ */
+function showSigninView(): void {
+    const template = document.getElementById('signin-view') as HTMLTemplateElement;
+    const clone = template.content.cloneNode(true) as DocumentFragment;
+    appContainer.innerHTML = '';
+    appContainer.appendChild(clone);
+
+    const signinButton = document.getElementById('signin-button') as HTMLButtonElement;
+    signinButton.addEventListener('click', () => {
+        vscode.postMessage({ command: 'openSignin' });
+    });
+
+    const refreshAuthButton = document.getElementById('refresh-auth-button') as HTMLButtonElement;
+    refreshAuthButton.addEventListener('click', () => {
+        vscode.postMessage({ command: 'checkAuth' });
+    });
+}
+
+/**
+ * Show chat view
+ */
+function showChatView(): void {
+    const template = document.getElementById('chat-view') as HTMLTemplateElement;
+    const clone = template.content.cloneNode(true) as DocumentFragment;
+    appContainer.innerHTML = '';
+    appContainer.appendChild(clone);
+
+    // Get references to chat elements
+    messageHistory = document.getElementById('message-history') as HTMLElement;
+    userInput = document.getElementById('user-input') as HTMLInputElement;
+    sendButton = document.getElementById('send-button') as HTMLButtonElement;
+
+    // Set up chat event listeners
+    setupChatListeners();
+}
 
 /**
  * Configure marked for proper markdown rendering
@@ -93,6 +133,8 @@ function addMessage(
     sender: 'user' | 'bot',
     timestamp: Date = new Date()
 ): void {
+    if (!messageHistory) return;
+
     const template = sender === 'user'
         ? document.getElementById('user-message-template') as HTMLTemplateElement
         : document.getElementById('bot-message-template') as HTMLTemplateElement;
@@ -120,6 +162,7 @@ function addMessage(
  * Show typing indicator while waiting for bot response
  */
 function showTypingIndicator(): void {
+    if (!messageHistory) return;
     const template = document.getElementById('typing-indicator') as HTMLTemplateElement;
     const clone = template.content.cloneNode(true) as DocumentFragment;
     (clone.firstElementChild as HTMLElement).id = 'typing-indicator';
@@ -141,7 +184,7 @@ function removeTypingIndicator(): void {
  * Send message to the extension
  */
 async function sendMessage(): Promise<void> {
-    if (isWaitingForResponse) return;
+    if (isWaitingForResponse || !userInput || !sendButton) return;
 
     const text = userInput.value.trim();
     if (!text) return;
@@ -163,11 +206,10 @@ async function sendMessage(): Promise<void> {
 }
 
 /**
- * Initialize the chat
+ * Set up chat event listeners
  */
-function initializeChat(): void {
-    // Configure marked for markdown rendering
-    configureMarked();
+function setupChatListeners(): void {
+    if (!sendButton || !userInput) return;
 
     // Set up event listeners
     sendButton.addEventListener('click', sendMessage);
@@ -184,23 +226,43 @@ function initializeChat(): void {
         this.style.height = Math.min(this.scrollHeight, 100) + 'px';
     });
 
+    // Focus input on load
+    userInput.focus();
+}
+
+/**
+ * Initialize the chat
+ */
+function initializeChat(): void {
+    // Configure marked for markdown rendering
+    configureMarked();
+
     // Listen for messages from extension
     window.addEventListener('message', (event: MessageEvent) => {
         const message = event.data;
-        if (message.command === 'gheremiahResponse') {
+        if (message.command === 'authState') {
+            isAuthenticated = message.isAuthenticated;
+            if (isAuthenticated) {
+                showChatView();
+            } else {
+                showSigninView();
+            }
+        } else if (message.command === 'gheremiahResponse') {
             removeTypingIndicator();
             addMessage(message.text, 'bot');
 
             // Re-enable input
             isWaitingForResponse = false;
-            sendButton.disabled = false;
-            userInput.disabled = false;
-            userInput.focus();
+            if (sendButton) sendButton.disabled = false;
+            if (userInput) {
+                userInput.disabled = false;
+                userInput.focus();
+            }
         }
     });
 
-    // Focus input on load
-    userInput.focus();
+    // Request initial auth state
+    vscode.postMessage({ command: 'checkAuth' });
 }
 
 // Initialize chat when DOM is ready
