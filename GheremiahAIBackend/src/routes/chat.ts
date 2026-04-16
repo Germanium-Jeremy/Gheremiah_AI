@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { streamText, generateText } from 'ai';
-import { authenticate, authenticateApiKey } from '../middleware/auth';
+import { authenticateAny } from '../middleware/auth';
 import { rateLimiter } from '../middleware/rate-limit';
 import { HttpException } from '../middleware/error-handler';
 import { UsageLog } from '../models/UsageLog';
@@ -24,7 +24,7 @@ const chatRequestSchema = z.object({
     systemPrompt: z.string().optional(),
 });
 
-router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     const google = createGoogleGenerativeAI({
         apiKey: process.env.GOOGLE_API_KEY
     });
