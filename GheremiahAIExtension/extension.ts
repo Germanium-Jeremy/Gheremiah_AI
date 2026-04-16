@@ -3,6 +3,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
+import * as http from 'http';
+import * as crypto from 'crypto';
 
 // Load environment variables from .env file
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
@@ -27,21 +29,148 @@ const getApiKey = (context: vscode.ExtensionContext): string => {
 
 let GEMINI_API_KEY = '';
 let GEMINI_API_URL = '';
+let ACCESS_TOKEN = '';
+const BACKEND_API_URL = 'http://localhost:8000';
+let localServer: http.Server | null = null;
+let authCallbackPort = 0;
+
+// Start local server to receive auth callback
+async function startAuthCallbackServer(context: vscode.ExtensionContext): Promise<number> {
+    if (localServer) {
+        return authCallbackPort;
+    }
+
+    const server = http.createServer((req, res) => {
+        // Add CORS headers
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+        if (req.method === 'OPTIONS') {
+            res.writeHead(200);
+            res.end();
+            return;
+        }
+
+        // Parse URL to handle query parameters
+        const url = new URL(req.url || '', `http://localhost:${authCallbackPort}`);
+        const pathname = url.pathname;
+
+        if (req.method === 'GET' && pathname === '/callback') {
+            const token = url.searchParams.get('token');
+            console.log("OAuth callback token: ", token, url.toString());
+
+            if (token) {
+                // Store the token
+                context.secrets.store('accessToken', token);
+                ACCESS_TOKEN = token;
+                console.log('Token received and stored successfully');
+
+                // Send success response
+                res.writeHead(200, { 'Content-Type': 'text/html' });
+                res.end(`
+                    <html>
+                        <body>
+                            <h1>Authentication Successful!</h1>
+                            <p>You can close this window and return to VS Code.</p>
+                            <script>
+                                setTimeout(() => window.close(), 2000);
+                            </script>
+                        </body>
+                    </html>
+                `);
+
+                // Notify webview if open
+                vscode.commands.executeCommand('gheremiahai.checkAuth');
+            } else {
+                res.writeHead(400, { 'Content-Type': 'text/html' });
+                res.end('<html><body><h1>Error: No token received</h1></body></html>');
+            }
+        } else {
+            res.writeHead(404);
+            res.end('Not found');
+        }
+    });
+
+    // Find an available port
+    const startServer = (port: number): Promise<number> => {
+        return new Promise((resolve, reject) => {
+            server.listen(port, () => {
+                console.log(`Auth callback server listening on port ${port}`);
+                resolve(port);
+            });
+            server.on('error', (err: any) => {
+                if (err.code === 'EADDRINUSE') {
+                    server.close();
+                    startServer(port + 1).then(resolve).catch(reject);
+                } else {
+                    reject(err);
+                }
+            });
+        });
+    };
+
+    localServer = server;
+    authCallbackPort = await startServer(34215); // Start from port 34215
+    return authCallbackPort;
+}
+
+// Stop local server
+function stopAuthCallbackServer(): void {
+    if (localServer) {
+        localServer.close();
+        localServer = null;
+        console.log('Auth callback server stopped');
+    }
+}
+
+// Check if user is authenticated
+async function checkAuthentication(context: vscode.ExtensionContext): Promise<void> {
+    try {
+        const token = await context.secrets.get('accessToken');
+        ACCESS_TOKEN = token || '';
+        console.log('Authentication check:', ACCESS_TOKEN ? 'Authenticated' : 'Not authenticated');
+    } catch (error) {
+        console.error('Error checking authentication:', error);
+    }
+}
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Gheremiah AI extension is now active!');
     
+    // Start local server for auth callback
+    startAuthCallbackServer(context).then(port => {
+        console.log(`Auth callback server started on port ${port}`);
+    }).catch(err => {
+        console.error('Failed to start auth callback server:', err);
+    });
+
     // Initialize API key and URL
     GEMINI_API_KEY = getApiKey(context);
     GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
     
-    // Check if API key is configured
-    if (!GEMINI_API_KEY) {
-        vscode.window.showErrorMessage(
-            'Gheremiah AI: API key not configured. Please set GEMINI_API_KEY in .env file or configure it in settings.'
-        );
-        return;
-    }
+    // Check if user is authenticated
+    checkAuthentication(context);
+
+    // Register command to manually set access token
+    const setTokenCommand = vscode.commands.registerCommand('gheremiahai.setAccessToken', async () => {
+        const token = await vscode.window.showInputBox({
+            prompt: 'Enter your Gheremiah AI access token',
+            password: true,
+        });
+
+        if (token) {
+            await context.secrets.store('accessToken', token);
+            ACCESS_TOKEN = token;
+            vscode.window.showInformationMessage('Access token saved successfully!');
+        }
+    });
+
+    // Register command to check authentication (called by local server)
+    const checkAuthCommand = vscode.commands.registerCommand('gheremiahai.checkAuth', async () => {
+        await checkAuthentication(context);
+        vscode.window.showInformationMessage('Authentication successful! You can now use the chat.');
+    });
 
     const disposable = vscode.commands.registerCommand('gheremiahai.start', () => {
         const panel = vscode.window.createWebviewPanel(
@@ -106,20 +235,44 @@ export function activate(context: vscode.ExtensionContext) {
 
         panel.webview.html = htmlContent;
 
+        // Send authentication state to webview
+        panel.webview.postMessage({ command: 'authState', isAuthenticated: !!ACCESS_TOKEN });
+
         panel.webview.onDidReceiveMessage(async (message) => {
-            if (message.command === 'askGemini') {
+            if (message.command === 'openSignin') {
+                // Open browser to extension authorization page with callback port
+                const authUrl = `http://localhost:3000/extension-auth?vscode=true&callbackPort=${authCallbackPort}`;
+                vscode.env.openExternal(vscode.Uri.parse(authUrl));
+            } else if (message.command === 'checkAuth') {
+                // Re-check authentication and send state
+                await checkAuthentication(context);
+                panel.webview.postMessage({ command: 'authState', isAuthenticated: !!ACCESS_TOKEN });
+            } else if (message.command === 'askGemini') {
+                // Check if user is authenticated
+                if (!ACCESS_TOKEN) {
+                    panel.webview.postMessage({ command: 'gheremiahResponse', text: 'Please sign in to Gheremiah AI to use the chat feature.' });
+                    return;
+                }
+
                 const userPrompt = message.text;
-                vscode.window.showInformationMessage(`🤔 Asking Gheremiah AfffdI...`);
+                vscode.window.showInformationMessage(`🤔 Asking Gheremiah AI...`);
 
                 try {
-                    const response = await axios.post(GEMINI_API_URL, {
-                        contents: [{
-                            parts: [{ text: userPrompt }]
-                        }]
+                    const response = await axios.post(`${BACKEND_API_URL}/api/chat`, {
+                        messages: [{ role: 'user', content: userPrompt }],
+                        model: 'gemini-2.5-flash',
+                    }, {
+                        headers: {
+                            'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                        },
                     });
 
-                    const geminiReply = response.data.candidates[0].content.parts[0].text;
-                    panel.webview.postMessage({ command: 'gheremiahResponse', text: geminiReply });
+                    if (response.data.success) {
+                        const reply = response.data.data.content;
+                        panel.webview.postMessage({ command: 'gheremiahResponse', text: reply });
+                    } else {
+                        panel.webview.postMessage({ command: 'gheremiahResponse', text: `Error: ${response.data.error?.message || 'Failed to get response'}` });
+                    }
 
                 } catch (error) {
                     console.error('API Error:', error);
@@ -129,22 +282,20 @@ export function activate(context: vscode.ExtensionContext) {
                         const { status } = error.response;
                         const apiErrorMessage = (error.response.data.error as any)?.message;
                         
-                        if (status === 429) {
+                        if (status === 401) {
+                            errorMessage = 'Authentication failed. Please sign in again.';
+                        } else if (status === 429) {
                             errorMessage += 'Rate limit exceeded. Please try again in a moment.';
-                        } else if (status === 403) {
-                            errorMessage += 'Invalid API key. Please check your configuration.';
                         } else if (status === 503) {
-                            // Handle 503 Service Unavailable with API's specific message
                             if (apiErrorMessage) {
                                 errorMessage = apiErrorMessage;
                             } else {
-                                errorMessage += 'The Gemini API is currently unavailable. Please try again later.';
+                                errorMessage += 'The service is currently unavailable. Please try again later.';
                             }
                         } else if (apiErrorMessage) {
-                            // Use API's error message if available for other errors
                             errorMessage = apiErrorMessage;
                         } else {
-                            errorMessage += `API Error (${status}). Please check your API key and try again.`;
+                            errorMessage += `API Error (${status}). Please try again.`;
                         }
                     } else {
                         errorMessage += 'Please check your connection and try again.';
@@ -158,6 +309,10 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     context.subscriptions.push(disposable);
+    context.subscriptions.push(setTokenCommand);
+    context.subscriptions.push(checkAuthCommand);
 }
 
-export function deactivate() {}
+export function deactivate() {
+    stopAuthCallbackServer();
+}
