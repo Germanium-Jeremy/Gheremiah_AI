@@ -22,9 +22,9 @@ router.get('/logs', authenticate, requireAdmin, async (req: Request, res: Respon
 
         let logs;
         if (type) {
-            logs = logger.getLogsByType(type, limit);
+            logs = logger.getLogsByType(type, limit).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         } else {
-            logs = logger.getLogs(limit);
+            logs = logger.getLogs(limit).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         }
 
         res.json({
