@@ -11,14 +11,32 @@ export default function ExtensionAuthCallbackPage() {
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState('');
     const [accessToken, setAccessToken] = useState('');
+    const [isVSCodeExtension, setIsVSCodeExtension] = useState(false);
+    const [callbackPort, setCallbackPort] = useState('');
 
     useEffect(() => {
         const code = searchParams.get('code');
         const error = searchParams.get('error');
+        const vscode = searchParams.get('vscode') === 'true';
+        const statusParam = searchParams.get('status');
+
+        setIsVSCodeExtension(vscode);
 
         if (error) {
             setStatus('error');
             setMessage(decodeURIComponent(error));
+            return;
+        }
+
+        // For VS Code extension, check status parameter instead of exchanging code
+        if (vscode) {
+            if (statusParam === 'success') {
+                setStatus('success');
+                setMessage('Extension successfully authorized! You can close this window and return to VS Code. You might need to click the refresh button.');
+            } else {
+                setStatus('error');
+                setMessage('Authorization failed. Please try again.');
+            }
             return;
         }
 
@@ -28,7 +46,7 @@ export default function ExtensionAuthCallbackPage() {
             return;
         }
 
-        // Exchange code for access token
+        // Exchange code for access token (regular OAuth flow)
         const exchangeCode = async () => {
             try {
                 const data = await api.post('/api/extension-auth/callback', { code });
@@ -83,7 +101,7 @@ export default function ExtensionAuthCallbackPage() {
                             {message}
                         </p>
 
-                        {accessToken && (
+                        {accessToken && !isVSCodeExtension && (
                             <div className="bg-zinc-50 dark:bg-zinc-800 rounded-lg p-4 mb-6">
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
                                     Your Access Token (save this for the extension):
@@ -95,18 +113,30 @@ export default function ExtensionAuthCallbackPage() {
                         )}
 
                         <div className="space-y-3">
-                            <button
-                                onClick={() => navigator.clipboard.writeText(accessToken)}
-                                className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                Copy Access Token
-                            </button>
-                            <Link
-                                href="/chat"
-                                className="block w-full py-2 px-4 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 text-center"
-                            >
-                                Return to Chat
-                            </Link>
+                            {!isVSCodeExtension && (
+                                <>
+                                    <button
+                                        onClick={() => navigator.clipboard.writeText(accessToken)}
+                                        className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        Copy Access Token
+                                    </button>
+                                    <Link
+                                        href="/chat"
+                                        className="block w-full py-2 px-4 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 text-center"
+                                    >
+                                        Return to Chat
+                                    </Link>
+                                </>
+                            )}
+                            {isVSCodeExtension && (
+                                <button
+                                    onClick={() => window.close()}
+                                    className="w-full py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    Close Window
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
