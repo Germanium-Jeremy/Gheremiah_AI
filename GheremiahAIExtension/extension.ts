@@ -54,7 +54,7 @@ async function startAuthCallbackServer(context: vscode.ExtensionContext): Promis
 
         // Parse URL to handle query parameters
         const url = new URL(req.url || '', `http://localhost:${authCallbackPort}`);
-        const pathname = url.pathname;
+        const { pathname } = url;
 
         if (req.method === 'GET' && pathname === '/callback') {
             const token = url.searchParams.get('token');
