@@ -13,27 +13,41 @@ export default function ExtensionAuthPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [user, setUser] = useState<any>(null);
+    const [isVSCodeExtension, setIsVSCodeExtension] = useState(false);
+    const [callbackPort, setCallbackPort] = useState('');
 
     useEffect(() => {
         const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
-        
+
         if (!token || !userData) {
-            router.push('/login');
+            // If coming from VS Code extension, redirect to login with return URL
+            const isVSCodeExtension = searchParams.get('vscode') === 'true';
+            if (isVSCodeExtension) {
+                router.push(`/login?redirect=/extension-auth?vscode=true`);
+            } else {
+                router.push('/login');
+            }
             return;
         }
 
         setUser(JSON.parse(userData));
 
-        // Check if extensionId is in query params (redirected from extension)
-        const extId = searchParams.get('extensionId');
-        if (extId) {
-            setExtensionId(extId);
+        // Check if this is a VS Code extension authorization request
+        const vscode = searchParams.get('vscode') === 'true';
+        const port = searchParams.get('callbackPort') || '';
+        setIsVSCodeExtension(vscode);
+        setCallbackPort(port);
+
+        if (vscode) {
+            // Auto-fill extension ID for VS Code extension
+            setExtensionId('gheremiah-ai-vscode-extension');
         }
     }, [router, searchParams]);
 
-    const handleAuthorize = async () => {
-        if (!extensionId.trim()) {
+    const handleAuthorize = async (e?: React.MouseEvent | string) => {
+        const actualExtensionId = typeof e === 'string' ? e : extensionId;
+        if (!actualExtensionId.trim()) {
             setError('Extension ID is required');
             return;
         }
@@ -42,17 +56,41 @@ export default function ExtensionAuthPage() {
         setError('');
 
         try {
-            const data = await api.post('/api/extension-auth/authorize', {
-                extensionId,
-                permissions,
-                redirectUri: `${window.location.origin}/extension-auth/callback`,
-            });
+            if (isVSCodeExtension && callbackPort) {
+                // For VS Code extension, create a new extension access token via backend
+                const data = await api.post('/api/extension-auth/create-token', {
+                    extensionId: actualExtensionId,
+                    permissions,
+                });
 
-            if (data.success) {
-                // Redirect to the authorization URL
-                window.location.href = data.data.authUrl;
+                if (data.success) {
+                    const extensionAccessToken = data.data.accessToken;
+
+                    // Send extension access token to local server
+                    const response = await fetch(`http://localhost:${callbackPort}/callback?token=${extensionAccessToken}`);
+                    if (response.ok) {
+                        // Redirect to callback page with success
+                        window.location.href = `/extension-auth/callback?vscode=true&status=success`;
+                    } else {
+                        setError('Failed to send token to extension');
+                    }
+                } else {
+                    setError(data.error?.message || 'Failed to create access token');
+                }
             } else {
-                setError(data.error?.message || 'Authorization failed');
+                // Regular OAuth flow for web extensions
+                const data = await api.post('/api/extension-auth/authorize', {
+                    extensionId: actualExtensionId,
+                    permissions,
+                    redirectUri: `${window.location.origin}/extension-auth/callback`,
+                });
+
+                if (data.success) {
+                    // Redirect to the authorization URL
+                    window.location.href = data.data.authUrl;
+                } else {
+                    setError(data.error?.message || 'Authorization failed');
+                }
             }
         } catch (err) {
             setError('Failed to connect to server');
@@ -103,42 +141,45 @@ export default function ExtensionAuthPage() {
                             onChange={(e) => setExtensionId(e.target.value)}
                             className="block w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-zinc-800 dark:text-zinc-100"
                             placeholder="e.g., gheremiah-extension-v1"
+                            disabled={isVSCodeExtension}
                         />
                         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                             This is provided by the extension you want to authorize
                         </p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-                            Permissions
-                        </label>
-                        <div className="space-y-2">
-                            {[
-                                { id: 'read:chat', label: 'Read chat history', desc: 'Allow extension to read your chat messages' },
-                                { id: 'write:chat', label: 'Send chat messages', desc: 'Allow extension to send messages on your behalf' },
-                                { id: 'read:profile', label: 'Read profile information', desc: 'Allow extension to access your profile data' },
-                            ].map((perm) => (
-                                <div key={perm.id} className="flex items-start">
-                                    <input
-                                        type="checkbox"
-                                        id={perm.id}
-                                        checked={permissions.includes(perm.id)}
-                                        onChange={() => togglePermission(perm.id)}
-                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded"
-                                    />
-                                    <div className="ml-3">
-                                        <label htmlFor={perm.id} className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                            {perm.label}
-                                        </label>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                                            {perm.desc}
-                                        </p>
+                    {!isVSCodeExtension && (
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+                                Permissions
+                            </label>
+                            <div className="space-y-2">
+                                {[
+                                    { id: 'read:chat', label: 'Read chat history', desc: 'Allow extension to read your chat messages' },
+                                    { id: 'write:chat', label: 'Send chat messages', desc: 'Allow extension to send messages on your behalf' },
+                                    { id: 'read:profile', label: 'Read profile information', desc: 'Allow extension to access your profile data' },
+                                ].map((perm) => (
+                                    <div key={perm.id} className="flex items-start">
+                                        <input
+                                            type="checkbox"
+                                            id={perm.id}
+                                            checked={permissions.includes(perm.id)}
+                                            onChange={() => togglePermission(perm.id)}
+                                            className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-zinc-300 rounded"
+                                        />
+                                        <div className="ml-3">
+                                            <label htmlFor={perm.id} className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                                {perm.label}
+                                            </label>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                                {perm.desc}
+                                            </p>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4">
                         <p className="text-sm text-yellow-800 dark:text-yellow-200">
