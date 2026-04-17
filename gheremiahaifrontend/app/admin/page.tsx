@@ -28,10 +28,9 @@ export default function AdminPage() {
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
         
-        if (!token || !userData) {
+        if (!userData) {
             router.push('/login');
             return;
         }
@@ -48,15 +47,12 @@ export default function AdminPage() {
 
     const fetchLogs = async () => {
         try {
-            const token = localStorage.getItem('accessToken');
             const url = filter === 'all' 
                 ? 'http://localhost:8000/api/admin/logs'
                 : `http://localhost:8000/api/admin/logs?type=${filter}`;
             
             const response = await fetch(url, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                credentials: 'include',
             });
 
             const data = await response.json();
@@ -74,12 +70,9 @@ export default function AdminPage() {
         if (!confirm('Are you sure you want to clear all logs?')) return;
 
         try {
-            const token = localStorage.getItem('accessToken');
             const response = await fetch('http://localhost:8000/api/admin/logs', {
                 method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                },
+                credentials: 'include',
             });
 
             if (response.ok) {
@@ -90,11 +83,18 @@ export default function AdminPage() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        router.push('/login');
+    const handleLogout = async () => {
+        try {
+            await fetch('http://localhost:8000/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (err) {
+            console.error('Logout error:', err);
+        } finally {
+            localStorage.removeItem('user');
+            router.push('/login');
+        }
     };
 
     useEffect(() => {
