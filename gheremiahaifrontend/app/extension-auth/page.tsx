@@ -14,10 +14,9 @@ export default function ExtensionAuthPage() {
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
-        const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
         
-        if (!token || !userData) {
+        if (!userData) {
             router.push('/login');
             return;
         }
@@ -41,12 +40,11 @@ export default function ExtensionAuthPage() {
         setError('');
 
         try {
-            const token = localStorage.getItem('accessToken');
             const response = await fetch('http://localhost:8000/api/extension-auth/authorize', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({
                     extensionId,
