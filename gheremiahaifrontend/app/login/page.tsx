@@ -1,16 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function LoginPage() {
     const router = useRouter();
+    const searchParams = useSearchParams()
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
+    const [message, setMessage] = useState('')
+    
+    useEffect(() => {
+        const messageParams = searchParams.get('message')
+        if (messageParams) {
+            setMessage(messageParams)
+        }
+    }, [])
+    
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -46,9 +55,11 @@ export default function LoginPage() {
         }
     };
 
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-black px-4">
             <div className="max-w-md w-full space-y-8">
+                {message != '' && <p className="text-green-600 text-xl text-center font-semibold">{message}</p>}
                 <div>
                     <h1 className="text-3xl font-bold text-center text-zinc-900 dark:text-zinc-50">
                         Sign in to your account
