@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import MarkdownRenderer from '../../components/MarkdownRenderer';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -29,10 +30,9 @@ export default function ChatPage() {
     }, [messages]);
 
     useEffect(() => {
-        const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
         
-        if (!token || !userData) {
+        if (!userData) {
             router.push('/login');
             return;
         }
@@ -49,7 +49,6 @@ export default function ChatPage() {
         setLoading(true);
 
         try {
-            const token = localStorage.getItem('accessToken');
             const apiKey = localStorage.getItem('apiKey');
             
             if (!apiKey) {
@@ -60,9 +59,9 @@ export default function ChatPage() {
 
             const response = await fetch('http://localhost:8000/api/chat', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                     'x-api-key': apiKey,
                 },
                 body: JSON.stringify({
@@ -88,11 +87,19 @@ export default function ChatPage() {
         }
     };
 
-    const handleLogout = () => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        router.push('/login');
+    const handleLogout = async () => {
+        try {
+            await fetch('http://localhost:8000/api/auth/logout', {
+                method: 'POST',
+                credentials: 'include',
+            });
+        } catch (err) {
+            console.error('Logout error:', err);
+        } finally {
+            localStorage.removeItem('user');
+            localStorage.removeItem('apiKey');
+            router.push('/login');
+        }
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -107,12 +114,11 @@ export default function ChatPage() {
 
         setCreatingApiKey(true);
         try {
-            const token = localStorage.getItem('accessToken');
             const response = await fetch('http://localhost:8000/api/keys', {
                 method: 'POST',
+                credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
                 },
                 body: JSON.stringify({ name: apiKeyName }),
             });
@@ -195,7 +201,13 @@ export default function ChatPage() {
                                         : 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 border border-zinc-200 dark:border-zinc-700'
                                 }`}
                             >
-                                <p className="whitespace-pre-wrap">{message.content}</p>
+                                {message.role === 'user' ? (
+                                    <p className="whitespace-pre-wrap">{message.content}</p>
+                                ) : (
+                                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                                        <MarkdownRenderer content={message.content} />
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))}
