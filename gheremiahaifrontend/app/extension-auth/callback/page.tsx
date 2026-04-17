@@ -32,6 +32,7 @@ export default function ExtensionAuthCallbackPage() {
             try {
                 const response = await fetch('http://localhost:8000/api/extension-auth/callback', {
                     method: 'POST',
+                    credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
                     },
