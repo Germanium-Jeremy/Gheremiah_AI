@@ -110,7 +110,6 @@ router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Requ
             });
         }
     } catch (error) {
-        console.warn("Error: ", error)
         if (error instanceof z.ZodError) {
             return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid chat request', {
                 errors: error.errors,
