@@ -31,7 +31,13 @@ export default function LoginPage() {
                 localStorage.setItem('accessToken', data.data.accessToken);
                 localStorage.setItem('refreshToken', data.data.refreshToken);
                 localStorage.setItem('user', JSON.stringify(data.data.user));
-                router.push('/chat');
+                
+                // Redirect admin to admin page, regular users to chat
+                if (data.data.user.role === 'admin') {
+                    router.push('/admin');
+                } else {
+                    router.push('/chat');
+                }
             } else {
                 setError(data.error?.message || 'Login failed');
             }
