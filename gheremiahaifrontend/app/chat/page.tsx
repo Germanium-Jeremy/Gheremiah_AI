@@ -15,6 +15,9 @@ export default function ChatPage() {
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+    const [apiKeyName, setApiKeyName] = useState('');
+    const [creatingApiKey, setCreatingApiKey] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -47,11 +50,20 @@ export default function ChatPage() {
 
         try {
             const token = localStorage.getItem('accessToken');
-            const response = await fetch('http://localhost:8000/api/chat/completions', {
+            const apiKey = localStorage.getItem('apiKey');
+            
+            if (!apiKey) {
+                setMessages(prev => [...prev, { role: 'assistant', content: 'Error: No API key found. Please create an API key first.' }]);
+                setLoading(false);
+                return;
+            }
+
+            const response = await fetch('http://localhost:8000/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
+                    'x-api-key': apiKey,
                 },
                 body: JSON.stringify({
                     messages: [
@@ -90,6 +102,37 @@ export default function ChatPage() {
         }
     };
 
+    const handleCreateApiKey = async () => {
+        if (!apiKeyName.trim()) return;
+
+        setCreatingApiKey(true);
+        try {
+            const token = localStorage.getItem('accessToken');
+            const response = await fetch('http://localhost:8000/api/keys', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ name: apiKeyName }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                localStorage.setItem('apiKey', data.data.key);
+                setShowApiKeyDialog(false);
+                setApiKeyName('');
+            } else {
+                alert(`Failed to create API key: ${data.error?.message}`);
+            }
+        } catch (err) {
+            alert('Failed to connect to server');
+        } finally {
+            setCreatingApiKey(false);
+        }
+    };
+
     if (!user) {
         return null;
     }
@@ -105,6 +148,12 @@ export default function ChatPage() {
                         <span className="text-sm text-zinc-600 dark:text-zinc-400">
                             {user.email}
                         </span>
+                        <button
+                            onClick={() => setShowApiKeyDialog(true)}
+                            className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
+                        >
+                            Create API Key
+                        </button>
                         <Link
                             href="/extension-auth"
                             className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
@@ -188,6 +237,45 @@ export default function ChatPage() {
                     </div>
                 </div>
             </div>
+
+            {/* API Key Creation Dialog */}
+            {showApiKeyDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 max-w-md w-full mx-4">
+                        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 mb-4">
+                            Create API Key
+                        </h2>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+                            Create an API key to use the chat functionality. This key will be stored locally in your browser.
+                        </p>
+                        <input
+                            type="text"
+                            value={apiKeyName}
+                            onChange={(e) => setApiKeyName(e.target.value)}
+                            placeholder="API Key Name (e.g., My Chat Key)"
+                            className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100 mb-4"
+                        />
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleCreateApiKey}
+                                disabled={creatingApiKey || !apiKeyName.trim()}
+                                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {creatingApiKey ? 'Creating...' : 'Create Key'}
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowApiKeyDialog(false);
+                                    setApiKeyName('');
+                                }}
+                                className="flex-1 border border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 py-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
