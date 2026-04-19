@@ -14,6 +14,7 @@ export interface User {
     email: string;
     passwordHash: string;
     subscriptionTier: SubscriptionTier;
+    role: 'user' | 'admin';
     isVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
