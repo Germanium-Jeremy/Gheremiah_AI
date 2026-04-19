@@ -1,13 +1,15 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { errorHandler } from './middleware/error-handler';
+import { requestLogger } from './middleware/request-logger';
 import authRoutes from './routes/auth';
 import chatRoutes from './routes/chat';
 import apiKeyRoutes from './routes/api-keys';
 import extensionAuthRoutes from './routes/extension-auth';
+import adminRoutes from './routes/admin';
 
 dotenv.config();
 
@@ -34,6 +36,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(requestLogger);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -45,6 +48,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/keys', apiKeyRoutes);
 app.use('/api/extension-auth', extensionAuthRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('*', (req: Request, res: Response) => res.status(404).json({ error: 'Page Not found' }));
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
