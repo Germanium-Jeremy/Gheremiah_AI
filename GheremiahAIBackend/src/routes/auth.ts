@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { User } from '../models/User';
 import { hashPassword, comparePasswords } from '../utils/crypto';
@@ -19,13 +19,13 @@ const loginSchema = z.object({
     password: z.string().min(1, 'Password is required'),
 });
 
-router.post('/register', authRateLimiter, async (req: Request, res: Response) => {
+router.post('/register', authRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password } = registerSchema.parse(req.body);
 
         const existingUser = await User.findOne({ email });
         if (existingUser) {
-            throw new HttpException(409, ErrorCode.VALIDATION_ERROR, 'Email already registered');
+            return next(new HttpException(409, ErrorCode.VALIDATION_ERROR, 'Email already registered'));
         }
 
         const passwordHash = await hashPassword(password);
@@ -54,27 +54,27 @@ router.post('/register', authRateLimiter, async (req: Request, res: Response) =>
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
                 errors: error.errors,
-            });
+            }));
         }
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Registration failed');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Registration failed'));
     }
 });
 
-router.post('/login', authRateLimiter, async (req: Request, res: Response) => {
+router.post('/login', authRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password } = loginSchema.parse(req.body);
 
         const user = await User.findOne({ email });
         if (!user) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid email or password');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid email or password'));
         }
 
         const isValid = await comparePasswords(password, user.passwordHash);
         if (!isValid) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid email or password');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid email or password'));
         }
 
         const userObj = {
@@ -99,12 +99,12 @@ router.post('/login', authRateLimiter, async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
                 errors: error.errors,
-            });
+            }));
         }
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Login failed');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Login failed'));
     }
 });
 
