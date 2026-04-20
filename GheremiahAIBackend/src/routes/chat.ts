@@ -11,9 +11,6 @@ import type { ChatResponse, StreamChunk } from '@gheremiah-ai/shared';
 import { ErrorCode } from '@gheremiah-ai/shared';
 
 const router: Router = Router();
-const google = createGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_API_KEY
-});
 
 const chatRequestSchema = z.object({
     messages: z.array(z.object({
@@ -28,6 +25,10 @@ const chatRequestSchema = z.object({
 });
 
 router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Request, res: Response, next: NextFunction) => {
+    const google = createGoogleGenerativeAI({
+        apiKey: process.env.GOOGLE_API_KEY
+    });
+
     try {
         const parsed = chatRequestSchema.parse(req.body);
         const userId = req.user?.userId;
