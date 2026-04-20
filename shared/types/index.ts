@@ -170,3 +170,31 @@ export interface WebSocketMessage {
     data: any;
     requestId?: string;
 }
+
+// ============ EXTENSION AUTHORIZATION ============
+export interface ExtensionAuthRequest {
+    userId: string;
+    extensionId: string;
+    permissions: string[];
+}
+
+export interface ExtensionAuthResponse {
+    success: boolean;
+    authCode?: string;
+    error?: string;
+}
+
+export interface ExtensionAuthCallback {
+    code: string;
+    state?: string;
+}
+
+export interface ExtensionAuthToken {
+    id: string;
+    userId: string;
+    extensionId: string;
+    token: string;
+    permissions: string[];
+    expiresAt: Date;
+    createdAt: Date;
+}
