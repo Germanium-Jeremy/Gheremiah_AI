@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
@@ -27,13 +27,13 @@ const chatRequestSchema = z.object({
     systemPrompt: z.string().optional(),
 });
 
-router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Request, res: Response) => {
+router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const parsed = chatRequestSchema.parse(req.body);
         const userId = req.user?.userId;
 
         if (!userId) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated'));
         }
 
         const tier = req.user?.user.subscriptionTier || 'free';
@@ -110,12 +110,12 @@ router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Requ
         }
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid chat request', {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid chat request', {
                 errors: error.errors,
-            });
+            }));
         }
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'AI service error');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'AI service error'));
     }
 });
 
