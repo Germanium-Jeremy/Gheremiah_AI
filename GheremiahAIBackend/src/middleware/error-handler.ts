@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import type { ApiErrorResponse, ErrorCode } from '@gheremiah-ai/shared';
+import { logger } from '../utils/logger';
 
 export class HttpException extends Error {
     constructor(
@@ -13,13 +14,9 @@ export class HttpException extends Error {
     }
 }
 
-export const errorHandler = (
-    err: Error | HttpException,
-    req: Request,
-    res: Response,
-    next: NextFunction
-): void => {
-    console.error('Error:', err);
+export const errorHandler = (err: Error | HttpException, req: Request, res: Response, next: NextFunction): void => {
+    // Log error to JSON file
+    logger.logError(err, req);
 
     if (err instanceof HttpException) {
         const response: ApiErrorResponse = {
