@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { User } from '../models/User';
 import { verifyToken } from '../utils/jwt';
@@ -35,17 +35,17 @@ const callbackSchema = z.object({
 });
 
 // POST /api/extension-auth/authorize - Initiate authorization flow
-router.post('/authorize', authRateLimiter, async (req: Request, res: Response) => {
+router.post('/authorize', authRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header'));
         }
 
         const token = authHeader.replace('Bearer ', '');
         const payload = verifyToken(token);
         if (!payload) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid token');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid token'));
         }
 
         const { extensionId, permissions, redirectUri } = authorizeSchema.parse(req.body);
@@ -75,28 +75,28 @@ router.post('/authorize', authRateLimiter, async (req: Request, res: Response) =
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
                 errors: error.errors,
-            });
+            }));
         }
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Authorization failed');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Authorization failed'));
     }
 });
 
 // POST /api/extension-auth/callback - Exchange auth code for access token
-router.post('/callback', async (req: Request, res: Response) => {
+router.post('/callback', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { code } = callbackSchema.parse(req.body);
 
         const authData = authCodes.get(code);
         if (!authData) {
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid or expired authorization code');
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid or expired authorization code'));
         }
 
         if (new Date() > authData.expiresAt) {
             authCodes.delete(code);
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Authorization code has expired');
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Authorization code has expired'));
         }
 
         // Generate access token
@@ -124,38 +124,38 @@ router.post('/callback', async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
+            return next(new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
                 errors: error.errors,
-            });
+            }));
         }
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Callback failed');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Callback failed'));
     }
 });
 
 // GET /api/extension-auth/verify - Verify access token
-router.get('/verify', async (req: Request, res: Response) => {
+router.get('/verify', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header'));
         }
 
         const token = authHeader.replace('Bearer ', '');
         const tokenData = authTokens.get(token);
 
         if (!tokenData) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid access token');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Invalid access token'));
         }
 
         if (new Date() > tokenData.expiresAt) {
             authTokens.delete(token);
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Access token has expired');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'Access token has expired'));
         }
 
         const user = await User.findById(tokenData.userId);
         if (!user) {
-            throw new HttpException(404, ErrorCode.NOT_FOUND, 'User not found');
+            return next(new HttpException(404, ErrorCode.NOT_FOUND, 'User not found'));
         }
 
         res.json({
@@ -170,17 +170,17 @@ router.get('/verify', async (req: Request, res: Response) => {
             timestamp: new Date(),
         });
     } catch (error) {
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Verification failed');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Verification failed'));
     }
 });
 
 // POST /api/extension-auth/revoke - Revoke access token
-router.post('/revoke', async (req: Request, res: Response) => {
+router.post('/revoke', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader) {
-            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header');
+            return next(new HttpException(401, ErrorCode.UNAUTHORIZED, 'No authorization header'));
         }
 
         const token = authHeader.replace('Bearer ', '');
@@ -192,8 +192,8 @@ router.post('/revoke', async (req: Request, res: Response) => {
             timestamp: new Date(),
         });
     } catch (error) {
-        if (error instanceof HttpException) throw error;
-        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Revoke failed');
+        if (error instanceof HttpException) return next(error);
+        return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Revoke failed'));
     }
 });
 
