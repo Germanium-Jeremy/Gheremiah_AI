@@ -1,0 +1,32 @@
+{
+  "name": "gheremiah-ai",
+  "version": "1.0.0",
+  "description": "Gemini AI-powered assistant - web app, backend, VS Code extension, and Slackbot",
+  "workspaces": [
+    "GheremiahAIBackend",
+    "GheremiahAIExtension",
+    "GheremiahRiddler",
+    "gheremiahaifrontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev --workspace=@gheremiah-ai/backend",
+    "dev:frontend": "npm run dev --workspace=@gheremiah-ai/frontend",
+    "dev:shared": "npm run dev --workspace=@gheremiah-ai/shared",
+    "build": "npm run build --workspace=@gheremiah-ai/shared && npm run build --workspaces",
+    "build:shared": "npm run build --workspace=@gheremiah-ai/shared",
+    "clean": "rimraf node_modules GheremiahAIBackend/node_modules GheremiahAIExtension/node_modules GheremiahRiddler/node_modules gheremiahaifrontend/node_modules shared/node_modules shared/dist GheremiahAIBackend/dist GheremiahRiddler/dist"
+  },
+  "keywords": ["gemini", "ai", "assistant"],
+  "author": "NKUNDABAGENZI Jeremie",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "rimraf": "^6.1.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
