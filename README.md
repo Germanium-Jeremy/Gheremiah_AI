@@ -61,6 +61,9 @@ npm run dev:frontend
 
 # Start Slackbot
 npm run dev --workspace=@gheremiah-ai/riddler
+
+# Start VScode with workspace folders
+npm run dev --workspace=@gheremiah-ai/extension
 ```
 
 ## API Endpoints
