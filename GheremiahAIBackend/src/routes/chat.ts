@@ -8,8 +8,9 @@ import { rateLimiter } from '../middleware/rate-limit';
 import { HttpException } from '../middleware/error-handler';
 import { UsageLog } from '../models/UsageLog';
 import type { ChatResponse, StreamChunk } from '@gheremiah-ai/shared';
+import { ErrorCode } from '@gheremiah-ai/shared';
 
-const router = Router();
+const router: Router = Router();
 const google = createGoogleGenerativeAI({
     apiKey: process.env.GOOGLE_API_KEY
 });
@@ -32,7 +33,7 @@ router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Requ
         const userId = req.user?.userId;
 
         if (!userId) {
-            throw new HttpException(401, 'UNAUTHORIZED', 'Not authenticated');
+            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated');
         }
 
         const tier = req.user?.user.subscriptionTier || 'free';
@@ -63,12 +64,13 @@ router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Requ
                 res.write(`data: ${JSON.stringify(data)}\n\n`);
             }
 
+            const usage = await result.usage;
             const usageData: StreamChunk = {
                 type: 'usage',
-                usage: result.usage ? {
-                    promptTokens: result.usage.promptTokens,
-                    completionTokens: result.usage.completionTokens,
-                    totalTokens: result.usage.promptTokens + result.usage.completionTokens,
+                usage: usage ? {
+                    promptTokens: usage.promptTokens,
+                    completionTokens: usage.completionTokens,
+                    totalTokens: usage.promptTokens + usage.completionTokens,
                 } : undefined,
             };
             res.write(`data: ${JSON.stringify(usageData)}\n\n`);
@@ -82,20 +84,21 @@ router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Requ
                 ...(parsed.temperature !== undefined && { temperature: parsed.temperature }),
             });
 
+            const usage = await result.usage;
             const response: ChatResponse = {
                 id: randomUUID(),
                 content: result.text,
                 model: parsed.model,
                 timestamp: new Date(),
-                usage: result.usage ? {
-                    promptTokens: result.usage.promptTokens,
-                    completionTokens: result.usage.completionTokens,
-                    totalTokens: result.usage.promptTokens + result.usage.completionTokens,
+                usage: usage ? {
+                    promptTokens: usage.promptTokens,
+                    completionTokens: usage.completionTokens,
+                    totalTokens: usage.promptTokens + usage.completionTokens,
                 } : undefined,
             };
 
-            if (result.usage) {
-                usageEntry.tokensUsed = result.usage.promptTokens + result.usage.completionTokens;
+            if (usage) {
+                usageEntry.tokensUsed = usage.promptTokens + usage.completionTokens;
                 await usageEntry.save();
             }
 
@@ -107,12 +110,12 @@ router.post('/', authenticateApiKey, authenticate, rateLimiter, async (req: Requ
         }
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, 'VALIDATION_ERROR', 'Invalid chat request', {
+            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid chat request', {
                 errors: error.errors,
             });
         }
         if (error instanceof HttpException) throw error;
-        throw new HttpException(500, 'INTERNAL_SERVER_ERROR', 'AI service error');
+        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'AI service error');
     }
 });
 
