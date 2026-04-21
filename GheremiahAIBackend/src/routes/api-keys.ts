@@ -4,8 +4,9 @@ import { ApiKey } from '../models/ApiKey';
 import { authenticate } from '../middleware/auth';
 import { generateApiKey } from '@gheremiah-ai/shared';
 import { HttpException } from '../middleware/error-handler';
+import { ErrorCode } from '@gheremiah-ai/shared';
 
-const router = Router();
+const router: Router = Router();
 
 const createKeySchema = z.object({
     name: z.string().min(1, 'Name is required').max(50, 'Name too long'),
@@ -15,7 +16,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
     try {
         const userId = req.user?.userId;
         if (!userId) {
-            throw new HttpException(401, 'UNAUTHORIZED', 'Not authenticated');
+            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated');
         }
 
         const keys = await ApiKey.find({ userId }).select('name lastUsedAt createdAt');
@@ -32,7 +33,7 @@ router.get('/', authenticate, async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof HttpException) throw error;
-        throw new HttpException(500, 'INTERNAL_SERVER_ERROR', 'Failed to list API keys');
+        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to list API keys');
     }
 });
 
@@ -41,7 +42,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         const { name } = createKeySchema.parse(req.body);
         const userId = req.user?.userId;
         if (!userId) {
-            throw new HttpException(401, 'UNAUTHORIZED', 'Not authenticated');
+            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated');
         }
 
         const key = generateApiKey();
@@ -59,12 +60,12 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof z.ZodError) {
-            throw new HttpException(400, 'VALIDATION_ERROR', 'Invalid input', {
+            throw new HttpException(400, ErrorCode.VALIDATION_ERROR, 'Invalid input', {
                 errors: error.errors,
             });
         }
         if (error instanceof HttpException) throw error;
-        throw new HttpException(500, 'INTERNAL_SERVER_ERROR', 'Failed to create API key');
+        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to create API key');
     }
 });
 
@@ -73,13 +74,13 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
         const userId = req.user?.userId;
         const { id } = req.params;
         if (!userId) {
-            throw new HttpException(401, 'UNAUTHORIZED', 'Not authenticated');
+            throw new HttpException(401, ErrorCode.UNAUTHORIZED, 'Not authenticated');
         }
 
         const existing = await ApiKey.findOne({ _id: id, userId });
 
         if (!existing) {
-            throw new HttpException(404, 'NOT_FOUND', 'API key not found');
+            throw new HttpException(404, ErrorCode.NOT_FOUND, 'API key not found');
         }
 
         await ApiKey.findByIdAndDelete(id);
@@ -91,7 +92,7 @@ router.delete('/:id', authenticate, async (req: Request, res: Response) => {
         });
     } catch (error) {
         if (error instanceof HttpException) throw error;
-        throw new HttpException(500, 'INTERNAL_SERVER_ERROR', 'Failed to delete API key');
+        throw new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to delete API key');
     }
 });
 
