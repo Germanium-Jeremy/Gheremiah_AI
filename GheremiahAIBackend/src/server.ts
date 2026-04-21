@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/error-handler';
 import authRoutes from './routes/auth';
 import chatRoutes from './routes/chat';
 import apiKeyRoutes from './routes/api-keys';
+import extensionAuthRoutes from './routes/extension-auth';
 
 dotenv.config();
 
@@ -43,6 +44,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/keys', apiKeyRoutes);
+app.use('/api/extension-auth', extensionAuthRoutes);
 
 // Error handling middleware (must be last)
 app.use(errorHandler);
