@@ -1,5 +1,5 @@
 {
-  "name": "gheremiahaiextension",
+  "name": "@gheremiah-ai/extension",
   "displayName": "Gheremiah AI",
   "description": "An AI-powered chat bot for Python, JS, and TS powered by Gemini 2.5 Flash",
   "version": "0.0.1",

@@ -67,10 +67,9 @@ function parseMarkdown(text: string): string {
     try {
         const html = marked.parse(text);
         // Sanitize HTML to prevent XSS attacks
-        const sanitized = typeof DOMPurify !== 'undefined' 
+        return typeof DOMPurify !== 'undefined' 
             ? DOMPurify.sanitize(html, { ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'a', 'span', 'div', 'table', 'thead', 'tbody', 'tr', 'td', 'th', 'hr'], ALLOWED_ATTR: ['class', 'href', 'target', 'rel'] })
             : html;
-        return sanitized;
     } catch (error) {
         console.error('Markdown parsing error:', error);
         return escapeHtml(text);

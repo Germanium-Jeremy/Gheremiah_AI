@@ -126,7 +126,7 @@ export function activate(context: vscode.ExtensionContext) {
                     let errorMessage = 'Sorry, I encountered an error. ';
                     
                     if (axios.isAxiosError(error) && error.response) {
-                        const status = error.response.status;
+                        const { status } = error.response;
                         const apiErrorMessage = (error.response.data.error as any)?.message;
                         
                         if (status === 429) {
