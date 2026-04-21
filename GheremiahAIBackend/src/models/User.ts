@@ -16,6 +16,6 @@ const UserSchema = new Schema<IUserDocument>({
     isVerified: { type: Boolean, default: false },
 }, { timestamps: true });
 
-UserSchema.index({ email: 1 });
+// UserSchema.index({ email: 1 });
 
 export const User = mongoose.model<IUserDocument>('User', UserSchema);
