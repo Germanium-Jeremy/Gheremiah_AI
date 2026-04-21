@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@gheremiah-ai/shared": "*",
-    "@google/generative-ai": "^0.21.0",
+    "@google/genai": "^1.50.1",
     "@slack/bolt": "^4.0.0",
     "dotenv": "^16.0.0"
   },

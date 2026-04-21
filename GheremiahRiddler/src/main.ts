@@ -1,5 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { App, SocketModeHandler } from '@slack/bolt';
+import { GoogleGenAI } from '@google/genai';
+import { App } from '@slack/bolt';
+import SocketModeHandler from '@slack/bolt';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -13,7 +14,7 @@ if (!SLACK_BOT_TOKEN || !SLACK_APP_TOKEN || !GEMINI_API_KEY) {
     process.exit(1);
 }
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 const MODEL_NAME = 'gemini-2.5-flash';
 
 const RIDDLE_SYSTEM_INSTRUCTION = `
@@ -25,16 +26,16 @@ Try to add some riddle responses in the mix, but they should still sound like th
 `;
 
 async function getRiddleResponse(userMessage: string, maxRetries: number = 3): Promise<string> {
-    const model = genAI.getGenerativeModel({
-        model: MODEL_NAME,
-        systemInstruction: RIDDLE_SYSTEM_INSTRUCTION,
-    });
-
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-            const result = await model.generateContent(userMessage);
-            const response = result.response;
-            const text = response.text();
+            const response = await genAI.models.generateContent({
+                model: MODEL_NAME,
+                contents: userMessage,
+                config: {
+                    systemInstruction: RIDDLE_SYSTEM_INSTRUCTION,
+                },
+            });
+            const { text } = response;
             return text || 'Hmm, the riddle is forming... but the words are stuck. Ask me again?';
         } catch (error: any) {
             const errorStr = String(error);
@@ -96,7 +97,7 @@ app.event('message', async ({ event, client, say }) => {
 });
 
 (async () => {
-    const handler = new SocketModeHandler(app, SLACK_APP_TOKEN);
+    const handler = new SocketModeHandler({ appToken: SLACK_APP_TOKEN });
     console.log('🤖 Riddle Master is running!');
     console.log('💡 Bot will send messages in the MAIN channel (not as threaded replies)');
     await handler.start();
