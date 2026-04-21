@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import type { TokenPayload, User } from '@gheremiah-ai/shared';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -12,16 +12,15 @@ export const generateTokens = (user: Omit<User, 'passwordHash'>) => {
         subscriptionTier: user.subscriptionTier,
     };
 
-    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRE });
-    const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRE });
+    const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRE } as SignOptions);
+    const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRE } as SignOptions);
 
     return { accessToken, refreshToken };
 };
 
 export const verifyToken = (token: string): TokenPayload | null => {
     try {
-        const payload = jwt.verify(token, JWT_SECRET) as TokenPayload;
-        return payload;
+        return jwt.verify(token, JWT_SECRET) as TokenPayload;
     } catch (error) {
         return null;
     }
@@ -29,8 +28,7 @@ export const verifyToken = (token: string): TokenPayload | null => {
 
 export const decodeToken = (token: string): TokenPayload | null => {
     try {
-        const payload = jwt.decode(token) as TokenPayload;
-        return payload;
+        return jwt.decode(token) as TokenPayload;
     } catch (error) {
         return null;
     }
