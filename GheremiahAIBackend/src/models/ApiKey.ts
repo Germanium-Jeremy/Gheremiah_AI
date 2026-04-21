@@ -15,6 +15,6 @@ const ApiKeySchema = new Schema<IApiKeyDocument>({
     lastUsedAt: { type: Date },
 }, { timestamps: { createdAt: true, updatedAt: false } });
 
-ApiKeySchema.index({ key: 1 });
+// ApiKeySchema.index({ key: 1 });
 
 export const ApiKey = mongoose.model<IApiKeyDocument>('ApiKey', ApiKeySchema);
