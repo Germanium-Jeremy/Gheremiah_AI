@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../models/User';
+import { User, type IUserDocument } from '../models/User';
 import { ApiKey } from '../models/ApiKey';
 import type { TokenPayload, AuthenticatedRequest } from '@gheremiah-ai/shared';
 
@@ -96,9 +96,9 @@ export const authenticateApiKey = async (
             return;
         }
 
-        const keyRecord = await ApiKey.findOne({ key: apiKey }).populate('user', '-passwordHash');
+        const keyRecord = await ApiKey.findOne({ key: apiKey }).populate<{ user: IUserDocument }>('user', '-passwordHash');
 
-        if (!keyRecord || !(keyRecord.user as any).isVerified) {
+        if (!keyRecord || !keyRecord.user || !keyRecord.user.isVerified) {
             res.status(401).json({
                 success: false,
                 error: {
@@ -114,7 +114,7 @@ export const authenticateApiKey = async (
         keyRecord.lastUsedAt = new Date();
         await keyRecord.save();
 
-        const populatedUser = keyRecord.user as any;
+        const populatedUser = keyRecord.user;
         req.user = {
             userId: populatedUser._id.toString(),
             user: {
