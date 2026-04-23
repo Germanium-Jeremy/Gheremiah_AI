@@ -1,0 +1,13 @@
+**/*.ts
+**/*.map
+.git
+.gitignore
+.vscode
+node_modules
+out/**/*.map
+src/**/*.css
+src/**/*.ts
+!out/**/*.js
+!out/src/**/*.js
+*.md
+notes.txt
