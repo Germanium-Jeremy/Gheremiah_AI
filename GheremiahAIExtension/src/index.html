@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gheremiah AI Assistant</title>
+    <link href="./output.css" rel="stylesheet">
+    <!-- Highlight.js CSS for code syntax highlighting -->
+    <link href="package-style.css" rel="stylesheet">
+</head>
+<body class="bg-vscode-bg text-vscode-text h-screen flex flex-col p-4">
+    <!-- Header -->
+    <div class="border-b border-vscode-border pb-4 mb-4">
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+            🤖 Gheremiah AI Assistant
+        </h1>
+        <p class="text-sm text-gray-400 mt-1">Powered by Gemini 2.5 Flash</p>
+    </div>
+
+    <!-- Message History -->
+    <div id="message-history" class="flex-1 overflow-y-auto mb-4 space-y-3 custom-scrollbar">
+        <div class="text-center text-gray-400 text-sm mt-8">
+            Ask me anything about Python, JavaScript, or TypeScript!
+        </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="border-t border-vscode-border pt-4">
+        <div class="flex gap-2">
+            <input 
+                type="text" 
+                id="user-input" 
+                placeholder="Ask about code, debugging, or best practices..."
+                class="flex-1 bg-vscode-input text-vscode-text border border-vscode-border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+            >
+            <button 
+                id="send-button" 
+                class="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg hover:opacity-90 transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+                Send
+            </button>
+        </div>
+        <div class="text-xs text-gray-400 mt-2">
+            <kbd class="px-1 py-0.5 bg-gray-700 rounded">Enter</kbd> to send &sol;
+            <kbd class="px-1 py-0.5 bg-gray-700 rounded">Shift + Enter</kbd> for new line
+        </div>
+    </div>
+
+    <!-- Message Templates -->
+    <template id="user-message-template">
+        <div class="flex justify-end">
+            <div class="max-w-[80%] bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl rounded-br-none px-4 py-2 shadow-md">
+                <div class="message-text"></div>
+                <div class="text-xs text-blue-100 mt-1 opacity-75"></div>
+            </div>
+        </div>
+    </template>
+
+    <template id="bot-message-template">
+        <div class="flex justify-start">
+            <div class="max-w-[80%] bg-gray-700 bg-opacity-50 rounded-2xl rounded-bl-none px-4 py-2 shadow-md">
+                <div class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-semibold text-blue-400">🤖 Gheremiah</span>
+                </div>
+                <div class="message-text max-w-none"></div>
+                <div class="text-xs text-gray-400 mt-1"></div>
+            </div>
+        </div>
+    </template>
+
+    <template id="typing-indicator">
+        <div class="flex justify-start">
+            <div class="bg-gray-700 bg-opacity-50 rounded-2xl rounded-bl-none px-4 py-2">
+                <div class="flex gap-1">
+                    <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                    <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                    <span class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- External Libraries for Markdown Processing -->
+    <script src="marked"></script>
+    <script src="highlight"></script>
+    <script src="purify"></script>
+    
+    <!-- Chat Application Script -->
+    <script src="./scripts/chat.js"></script>
+</body>
+</html>
