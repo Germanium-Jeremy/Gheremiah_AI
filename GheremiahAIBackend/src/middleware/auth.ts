@@ -12,14 +12,10 @@ declare global {
     }
 }
 
-export const authenticate = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-): Promise<void> => {
+export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
-
+        
         if (!token) {
             res.status(401).json({
                 success: false,
@@ -32,11 +28,12 @@ export const authenticate = async (
             return;
         }
 
+        const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
         const payload = jwt.verify(
             token,
-            process.env.JWT_SECRET || 'your-secret-key'
+            jwtSecret
         ) as TokenPayload;
-
+        
         const user = await User.findById(payload.userId).select('-passwordHash');
 
         if (!user) {
@@ -57,6 +54,7 @@ export const authenticate = async (
                 id: (user._id as any).toString(),
                 email: user.email,
                 subscriptionTier: user.subscriptionTier,
+                role: user.role,
                 isVerified: user.isVerified,
                 createdAt: user.createdAt,
                 updatedAt: user.updatedAt,
@@ -76,11 +74,7 @@ export const authenticate = async (
     }
 };
 
-export const authenticateApiKey = async (
-    req: Request,
-    res: Response,
-    next: NextFunction
-): Promise<void> => {
+export const authenticateApiKey = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const apiKey = req.headers['x-api-key'] as string;
 
@@ -96,9 +90,9 @@ export const authenticateApiKey = async (
             return;
         }
 
-        const keyRecord = await ApiKey.findOne({ key: apiKey }).populate<{ user: IUserDocument }>('user', '-passwordHash');
+        const keyRecord = await ApiKey.findOne({ key: apiKey }).populate<{ userId: IUserDocument }>('userId', '-passwordHash');
 
-        if (!keyRecord || !keyRecord.user || !keyRecord.user.isVerified) {
+        if (!keyRecord || !keyRecord.userId || !keyRecord.userId.isVerified) {
             res.status(401).json({
                 success: false,
                 error: {
@@ -114,13 +108,14 @@ export const authenticateApiKey = async (
         keyRecord.lastUsedAt = new Date();
         await keyRecord.save();
 
-        const populatedUser = keyRecord.user;
+        const populatedUser = keyRecord.userId;
         req.user = {
             userId: populatedUser._id.toString(),
             user: {
                 id: populatedUser._id.toString(),
                 email: populatedUser.email,
                 subscriptionTier: populatedUser.subscriptionTier,
+                role: populatedUser.role,
                 isVerified: populatedUser.isVerified,
                 createdAt: populatedUser.createdAt,
                 updatedAt: populatedUser.updatedAt,
