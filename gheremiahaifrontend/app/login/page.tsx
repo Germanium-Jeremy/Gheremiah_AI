@@ -37,6 +37,7 @@ export default function LoginPage() {
             const data = await response.json();
 
             if (data.success) {
+                localStorage.setItem('accessToken', data.data.accessToken);
                 localStorage.setItem('user', JSON.stringify(data.data.user));
                 
                 // Redirect admin to admin page, regular users to chat
