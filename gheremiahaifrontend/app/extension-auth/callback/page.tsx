@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '../../../lib/api';
 
 export default function ExtensionAuthCallbackPage() {
     const router = useRouter();
@@ -30,16 +31,7 @@ export default function ExtensionAuthCallbackPage() {
         // Exchange code for access token
         const exchangeCode = async () => {
             try {
-                const response = await fetch('http://localhost:8000/api/extension-auth/callback', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ code }),
-                });
-
-                const data = await response.json();
+                const data = await api.post('/api/extension-auth/callback', { code });
 
                 if (data.success) {
                     setStatus('success');
