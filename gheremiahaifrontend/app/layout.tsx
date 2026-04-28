@@ -15,6 +15,28 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Gheremiah AI",
   description: "Gemini AI-powered assistant by Jeremie",
+  keywords: "AI, assistant, Gemini, Gheremiah, Jeremie, technology, chatbot",
+  authors: {
+    "name": "Jeremie NKUNDABAGENZI",
+    "url": "https://github.com/jeremi-ai",
+  },
+  creator: "Jeremie NKUNDABAGENZI",
+  publisher: "Jeremie NKUNDABAGENZI",
+  robots: "index, follow", // Indicate to search engines to index and follow links
+  openGraph: {
+    title: "Gheremiah AI",
+    description: "Gemini AI-powered assistant by Jeremie",
+    type: "website",
+    url: "https://gheremiahai.vercel.app",
+    images: [
+      {
+        url: "https://gheremiahai.vercel.app/favicon.ico",
+        width: 1200,
+        height: 630,
+        alt: "Gheremiah AI",
+      },
+    ],
+  }
 };
 
 export default function RootLayout({
