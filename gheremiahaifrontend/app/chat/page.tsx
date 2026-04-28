@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import MarkdownRenderer from '../../components/MarkdownRenderer';
+import { api } from '../../lib/api';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -12,6 +13,7 @@ interface Message {
 
 export default function ChatPage() {
     const router = useRouter();
+     const searchParams = useSearchParams()
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,6 +21,8 @@ export default function ChatPage() {
     const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
     const [apiKeyName, setApiKeyName] = useState('');
     const [creatingApiKey, setCreatingApiKey] = useState(false);
+    const [verified, setVerified] = useState(false);
+    const [showVerifiedMessage, setShowVerifiedMessage] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     const scrollToBottom = () => {
@@ -26,13 +30,41 @@ export default function ChatPage() {
     };
 
     useEffect(() => {
+        if (user?.verified) {
+            setVerified(true);
+            return
+        }
+
+        const messageParams = searchParams.get('verified');
+        if (messageParams) {
+            setVerified(!!messageParams);
+        }
+    }, [user])
+
+    useEffect(() => {
+        if (verified) {
+            const showTimer = setTimeout(() => {
+                setShowVerifiedMessage(true);
+            }, 1000);
+            const hideTimer = setTimeout(() => {
+                setShowVerifiedMessage(false);
+            }, 5000);
+            return () => {
+                clearTimeout(showTimer);
+                clearTimeout(hideTimer);
+            };
+        }
+    }, [verified])
+
+    useEffect(() => {
         scrollToBottom();
     }, [messages]);
 
     useEffect(() => {
+        const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
         
-        if (!userData) {
+        if (!token || !userData) {
             router.push('/login');
             return;
         }
@@ -57,23 +89,17 @@ export default function ChatPage() {
                 return;
             }
 
-            const response = await fetch('http://localhost:8000/api/chat', {
-                method: 'POST',
-                credentials: 'include',
+            const data = await api.post('/api/chat', {
+                messages: [
+                    ...messages,
+                    { role: 'user', content: userMessage }
+                ],
+                model: 'gemini-2.5-flash',
+            }, {
                 headers: {
-                    'Content-Type': 'application/json',
                     'x-api-key': apiKey,
                 },
-                body: JSON.stringify({
-                    messages: [
-                        ...messages,
-                        { role: 'user', content: userMessage }
-                    ],
-                    model: 'gemini-2.5-flash',
-                }),
             });
-
-            const data = await response.json();
 
             if (data.success) {
                 setMessages(prev => [...prev, { role: 'assistant', content: data.data.content }]);
@@ -89,13 +115,11 @@ export default function ChatPage() {
 
     const handleLogout = async () => {
         try {
-            await fetch('http://localhost:8000/api/auth/logout', {
-                method: 'POST',
-                credentials: 'include',
-            });
+            await api.post('/api/auth/logout');
         } catch (err) {
             console.error('Logout error:', err);
         } finally {
+            localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
             localStorage.removeItem('apiKey');
             router.push('/login');
@@ -114,16 +138,7 @@ export default function ChatPage() {
 
         setCreatingApiKey(true);
         try {
-            const response = await fetch('http://localhost:8000/api/keys', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ name: apiKeyName }),
-            });
-
-            const data = await response.json();
+            const data = await api.post('/api/keys', { name: apiKeyName });
 
             if (data.success) {
                 localStorage.setItem('apiKey', data.data.key);
@@ -177,6 +192,9 @@ export default function ChatPage() {
             </header>
 
             <div className="flex-1 overflow-y-auto px-4 py-6">
+                {showVerifiedMessage && (
+                    <p className="text-green-600 text-xl text-center font-semibold">Your account has been verified.</p>
+                )}
                 <div className="max-w-4xl mx-auto space-y-4">
                     {messages.length === 0 && (
                         <div className="text-center py-12">
