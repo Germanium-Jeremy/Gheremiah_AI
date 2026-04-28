@@ -40,6 +40,7 @@ export default function SignupPage() {
             const data = await response.json();
 
             if (data.success) {
+                localStorage.setItem('accessToken', data.data.accessToken);
                 localStorage.setItem('user', JSON.stringify(data.data.user));
                 // Show message about verification email
                 router.push('/login?message=Please check your email to verify your account');
