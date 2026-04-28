@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Gheremiah AI",
-  description: "Gemini AI-powered assistant by Gheremiah",
+  description: "Gemini AI-powered assistant by Jeremie",
 };
 
 export default function RootLayout({
