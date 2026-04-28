@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '../../lib/api';
 
 export default function ExtensionAuthPage() {
     const router = useRouter();
@@ -14,9 +15,10 @@ export default function ExtensionAuthPage() {
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
+        const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
         
-        if (!userData) {
+        if (!token || !userData) {
             router.push('/login');
             return;
         }
@@ -40,20 +42,11 @@ export default function ExtensionAuthPage() {
         setError('');
 
         try {
-            const response = await fetch('http://localhost:8000/api/extension-auth/authorize', {
-                method: 'POST',
-                credentials: 'include',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    extensionId,
-                    permissions,
-                    redirectUri: `${window.location.origin}/extension-auth/callback`,
-                }),
+            const data = await api.post('/api/extension-auth/authorize', {
+                extensionId,
+                permissions,
+                redirectUri: `${window.location.origin}/extension-auth/callback`,
             });
-
-            const data = await response.json();
 
             if (data.success) {
                 // Redirect to the authorization URL
