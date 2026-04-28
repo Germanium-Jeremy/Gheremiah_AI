@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '../../lib/api';
 
 interface LogEntry {
     timestamp: string;
@@ -28,9 +29,10 @@ export default function AdminPage() {
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
+        const token = localStorage.getItem('accessToken');
         const userData = localStorage.getItem('user');
         
-        if (!userData) {
+        if (!token || !userData) {
             router.push('/login');
             return;
         }
@@ -48,14 +50,10 @@ export default function AdminPage() {
     const fetchLogs = async () => {
         try {
             const url = filter === 'all' 
-                ? 'http://localhost:8000/api/admin/logs'
-                : `http://localhost:8000/api/admin/logs?type=${filter}`;
+                ? '/api/admin/logs'
+                : `/api/admin/logs?type=${filter}`;
             
-            const response = await fetch(url, {
-                credentials: 'include',
-            });
-
-            const data = await response.json();
+            const data = await api.get(url);
             if (data.success) {
                 setLogs(data.data);
             }
@@ -70,14 +68,8 @@ export default function AdminPage() {
         if (!confirm('Are you sure you want to clear all logs?')) return;
 
         try {
-            const response = await fetch('http://localhost:8000/api/admin/logs', {
-                method: 'DELETE',
-                credentials: 'include',
-            });
-
-            if (response.ok) {
-                setLogs([]);
-            }
+            await api.delete('/api/admin/logs');
+            setLogs([]);
         } catch (err) {
             console.error('Failed to clear logs:', err);
         }
@@ -85,13 +77,11 @@ export default function AdminPage() {
 
     const handleLogout = async () => {
         try {
-            await fetch('http://localhost:8000/api/auth/logout', {
-                method: 'POST',
-                credentials: 'include',
-            });
+            await api.post('/api/auth/logout');
         } catch (err) {
             console.error('Logout error:', err);
         } finally {
+            localStorage.removeItem('accessToken');
             localStorage.removeItem('user');
             router.push('/login');
         }
