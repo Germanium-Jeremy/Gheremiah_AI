@@ -1,0 +1,24 @@
+{
+  "watch": ["src"],
+  "ext": "ts",
+  "ignore": [
+    "node_modules/*",
+    "logs/*",
+    ".env",
+    ".env.local",
+    "*.json",
+    "package-lock.json",
+    "tsconfig.json"
+  ],
+  "exec": "ts-node",
+  "args": "src/server.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 500,
+  "legacyWatch": false,
+  "events": {
+    "restart": "echo 'App restarted due to file changes in src/'",
+    "crash": "echo 'App crashed'"
+  }
+}
