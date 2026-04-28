@@ -69,24 +69,17 @@ router.post('/register', authRateLimiter, async (req: Request, res: Response, ne
 
         const { accessToken, refreshToken } = generateTokens(userObj);
 
-        // Set httpOnly cookies
-        res.cookie('accessToken', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-
+        // Set refreshToken in httpOnly cookie
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
 
         res.status(201).json({
             success: true,
-            data: { user: userObj },
+            data: { accessToken, user: userObj },
             timestamp: new Date(),
         });
     } catch (error) {
@@ -126,24 +119,17 @@ router.post('/login', authRateLimiter, async (req: Request, res: Response, next:
 
         const { accessToken, refreshToken } = generateTokens(userObj);
 
-        // Set httpOnly cookies
-        res.cookie('accessToken', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-
+        // Set refreshToken in httpOnly cookie
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
 
         res.json({
             success: true,
-            data: { user: userObj },
+            data: { accessToken, user: userObj },
             timestamp: new Date(),
         });
     } catch (error) {
@@ -202,24 +188,17 @@ router.get('/verify-email', async (req: Request, res: Response, next: NextFuncti
 
         const { accessToken, refreshToken } = generateTokens(userObj);
 
-        // Set httpOnly cookies
-        res.cookie('accessToken', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
-
+        // Set refreshToken in httpOnly cookie
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
         });
 
-        // Redirect to frontend with user data
+        // Redirect to frontend with accessToken as query param
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        res.redirect(`${frontendUrl}/chat?verified=true`);
+        res.redirect(`${frontendUrl}/chat?verified=true&token=${accessToken}`);
     } catch (error) {
         if (error instanceof HttpException) return next(error);
         return next(new HttpException(500, ErrorCode.INTERNAL_SERVER_ERROR, 'Email verification failed'));
@@ -228,7 +207,6 @@ router.get('/verify-email', async (req: Request, res: Response, next: NextFuncti
 
 // POST /api/auth/logout - Clear cookies
 router.post('/logout', (req: Request, res: Response) => {
-    res.clearCookie('accessToken');
     res.clearCookie('refreshToken');
     res.json({
         success: true,
