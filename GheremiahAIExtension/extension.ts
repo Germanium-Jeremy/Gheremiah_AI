@@ -4,10 +4,10 @@ import * as fs from 'fs';
 import axios from 'axios';
 import * as dotenv from 'dotenv';
 import * as http from 'http';
-import * as crypto from 'crypto';
 
 // Load environment variables from .env file
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
+
 
 // Get API key from environment variables or configuration
 const getApiKey = (context: vscode.ExtensionContext): string => {
@@ -33,6 +33,12 @@ let ACCESS_TOKEN = '';
 const BACKEND_API_URL = process.env.BACKEND_URL;
 let localServer: http.Server | null = null;
 let authCallbackPort = 0;
+
+async function deleteOldToken(context: vscode.ExtensionContext): Promise<void> {
+    await context.secrets.delete('accessToken');
+    ACCESS_TOKEN = '';
+    console.log('Access token deleted');
+}
 
 // Start local server to receive auth callback
 async function startAuthCallbackServer(context: vscode.ExtensionContext): Promise<number> {
@@ -126,12 +132,20 @@ function stopAuthCallbackServer(): void {
 
 // Check if user is authenticated
 async function checkAuthentication(context: vscode.ExtensionContext): Promise<void> {
+    // vscode.commands.executeCommand('gheremiahai.deleteAccessToken');
+
     try {
         const token = await context.secrets.get('accessToken');
-        ACCESS_TOKEN = token || '';
-        console.log('Authentication check:', ACCESS_TOKEN ? 'Authenticated' : 'Not authenticated');
+        if (!token) {
+            ACCESS_TOKEN = '';
+        } else {
+            ACCESS_TOKEN = token;
+        }
+        console.log('Checking authentication, retrieved token from secrets: ', token);
+        console.log('Authentication check:', ACCESS_TOKEN ? 'Authenticated' : 'Not authenticated', ACCESS_TOKEN, token);
     } catch (error) {
         console.error('Error checking authentication:', error);
+        ACCESS_TOKEN = '';
     }
 }
 
@@ -170,6 +184,12 @@ export function activate(context: vscode.ExtensionContext) {
     const checkAuthCommand = vscode.commands.registerCommand('gheremiahai.checkAuth', async () => {
         await checkAuthentication(context);
         vscode.window.showInformationMessage('Authentication successful! You can now use the chat.');
+    });
+
+    // Register command to delete access token (for testing)
+    const deleteTokenCommand = vscode.commands.registerCommand('gheremiahai.deleteAccessToken', async () => {
+        deleteOldToken(context);
+        vscode.window.showInformationMessage('Access token deleted. You will need to sign in again.');
     });
 
     const disposable = vscode.commands.registerCommand('gheremiahai.start', () => {
@@ -311,6 +331,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(disposable);
     context.subscriptions.push(setTokenCommand);
     context.subscriptions.push(checkAuthCommand);
+    context.subscriptions.push(deleteTokenCommand);
 }
 
 export function deactivate() {
