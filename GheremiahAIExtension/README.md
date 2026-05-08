@@ -29,7 +29,7 @@ This VS Code extension was created as a study project to learn VS Code extension
 
 ## Proof of Concept
 
-[![Extension Demo](../ProofOfConcepts/Extension.mp4)](../ProofOfConcepts/Extension.mp4)
+[![Extension Demo](../ProofOfConcepts/Extension.png)](../ProofOfConcepts/Extension.png)
 
 Click the video above to see the VS Code extension in action.
 
