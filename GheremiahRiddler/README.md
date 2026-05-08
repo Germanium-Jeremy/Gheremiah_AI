@@ -24,7 +24,7 @@ This Slackbot was created as a study project to learn bot development with Slack
 
 ## Proof of Concept
 
-[![Slackbot Demo](../ProofOfConcepts/slackbot.mp4)](../ProofOfConcepts/slackbot.mp4)
+[![Slackbot Demo](../ProofOfConcepts/bot.png)](../ProofOfConcepts/bot.png)
 
 Click the video above to see the Slackbot in action.
 
@@ -67,7 +67,7 @@ Click the video above to see the Slackbot in action.
 3. **Event Subscriptions**:
    - Navigate to "Event Subscriptions"
    - Enable events
-   - Request URL: `https://your-render-url/slack/events`
+   - Request URL: `https://gheremiah-ai-backend.onrender.com`
    - Subscribe to bot events:
      - `app_mention`
      - `message.channels`
