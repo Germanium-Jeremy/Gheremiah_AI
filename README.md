@@ -33,7 +33,7 @@ VS Code extension that brings AI assistance directly into your editor with a cus
 - **Tech Stack**: TypeScript, VS Code API, Webview Panels, Marked.js, Highlight.js
 - **Installation**: Manual from VSIX
 
-[![Extension Demo](./ProofOfConcepts/Extension.mp4)](./ProofOfConcepts/Extension.mp4)
+[![Extension Demo](./ProofOfConcepts/extension.png)](./ProofOfConcepts/extension.png)
 
 ### 4. **Gheremiah AI - Slackbot** 💬
 Slack bot that brings Gheremiah AI to your workspace with slash commands and direct messaging.
@@ -42,7 +42,7 @@ Slack bot that brings Gheremiah AI to your workspace with slash commands and dir
 - **Tech Stack**: Node.js, TypeScript, Slack Bolt SDK, Google Gemini API
 - **Deployment**: Railway
 
-[![Slackbot Demo](./ProofOfConcepts/slackbot.mp4)](./ProofOfConcepts/slackbot.mp4)
+[![Slackbot Demo](./ProofOfConcepts/bot.png)](./ProofOfConcepts/bot.png)
 
 ## Architecture
 
@@ -167,8 +167,8 @@ curl -X POST http://localhost:8000/api/chat \
 Demo media files are available in the `ProofOfConcepts/` directory:
 
 - `web_platform.png` - Screenshot of the web platform interface
-- `Extension.mp4` - Screen recording of the VS Code extension
-- `slackbot.mp4` - Screen recording of the Slackbot in action
+- `extension.png` - Screenshot of the VS Code extension
+- `bot.png` - Screenshot of the Slackbot in action
 
 ## Individual Product Documentation
 
