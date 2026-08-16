@@ -20,7 +20,7 @@ const SystemConfigSchema: Schema = new Schema({
 
 // Ensure only one config document exists
 SystemConfigSchema.pre('save', async function (next) {
-    const count = await this.constructor.countDocuments();
+    const count = await mongoose.model('SystemConfig').countDocuments();
     if (count > 1 && !this.isNew) {
         // This is a bit simplistic, but for a singleton config it works.
         // In a real app, we might use a specific ID.

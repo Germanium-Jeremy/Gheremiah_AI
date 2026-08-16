@@ -7,7 +7,7 @@ import { rateLimiter } from '../middleware/rate-limit';
 import { HttpException } from '../middleware/error-handler';
 import { UsageLog, SystemConfig } from '../models';
 import { ProviderFactory } from '../providers/ProviderFactory';
-import type { ChatResponse, StreamChunk } from '@gheremiah-ai/shared';
+import type { AvailableModel, ChatResponse, StreamChunk } from '@gheremiah-ai/shared';
 import { ErrorCode } from '@gheremiah-ai/shared';
 
 const router: Router = Router();
@@ -66,7 +66,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             const result = await streamText({
                 model: model,
                 messages: parsed.messages,
-                maxTokens,
+                maxOutputTokens: maxTokens,
                 system: systemPrompt,
                 ...(parsed.temperature !== undefined && { temperature: parsed.temperature }),
             });
@@ -80,9 +80,9 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             const usageData: StreamChunk = {
                 type: 'usage',
                 usage: usage ? {
-                    promptTokens: usage.promptTokens,
-                    completionTokens: usage.completionTokens,
-                    totalTokens: usage.promptTokens + usage.completionTokens,
+                    promptTokens: usage.inputTokens ?? 0,
+                    completionTokens: usage.outputTokens ?? 0,
+                    totalTokens: usage.totalTokens ?? 0,
                 } : undefined,
             };
             res.write(`data: ${JSON.stringify(usageData)}\n\n`);
@@ -91,7 +91,7 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             const result = await generateText({
                 model: model,
                 messages: parsed.messages,
-                maxTokens,
+                maxOutputTokens: maxTokens,
                 system: systemPrompt,
                 ...(parsed.temperature !== undefined && { temperature: parsed.temperature }),
             });
@@ -100,17 +100,17 @@ router.post('/', authenticateAny, rateLimiter, async (req: Request, res: Respons
             const response: ChatResponse = {
                 id: randomUUID(),
                 content: result.text,
-                model: parsed.model || (providerName === 'gemini' ? 'gemini-2.5-flash' : 'llama3'),
+                model: (parsed.model || (providerName === 'gemini' ? 'gemini-2.5-flash' : 'llama3')) as AvailableModel,
                 timestamp: new Date(),
                 usage: usage ? {
-                    promptTokens: usage.promptTokens,
-                    completionTokens: usage.completionTokens,
-                    totalTokens: usage.promptTokens + usage.completionTokens,
+                    promptTokens: usage.inputTokens ?? 0,
+                    completionTokens: usage.outputTokens ?? 0,
+                    totalTokens: usage.totalTokens ?? 0,
                 } : undefined,
             };
 
             if (usage) {
-                usageEntry.tokensUsed = usage.promptTokens + usage.completionTokens;
+                usageEntry.tokensUsed = (usage.inputTokens ?? 0) + (usage.outputTokens ?? 0);
                 await usageEntry.save();
             }
 
