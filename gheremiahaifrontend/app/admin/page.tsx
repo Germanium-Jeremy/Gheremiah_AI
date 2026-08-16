@@ -317,8 +317,8 @@ export default function AdminPage() {
                                         </tbody>
                                     </table>
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>
