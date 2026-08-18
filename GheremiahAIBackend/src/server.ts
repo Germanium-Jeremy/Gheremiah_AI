@@ -1,8 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { errorHandler } from './middleware/error-handler';
 import { requestLogger } from './middleware/request-logger';
@@ -11,8 +13,6 @@ import chatRoutes from './routes/chat';
 import apiKeyRoutes from './routes/api-keys';
 import extensionAuthRoutes from './routes/extension-auth';
 import adminRoutes from './routes/admin';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 8000;
