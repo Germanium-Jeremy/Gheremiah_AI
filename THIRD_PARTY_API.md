@@ -4,7 +4,10 @@ Welcome to the Gheremiah AI API. This guide explains how to integrate your own a
 
 ## 1. Authentication
 
-All API requests must be authenticated using an API Key.
+The Gheremiah AI API provides a flexible authentication system. For third-party applications, the **API Key** is the primary and sufficient method of authentication.
+
+### No Session Token Required
+Third-party applications **do not need** a user session token (JWT/Bearer token) to make requests. Providing a valid API key is sufficient to authenticate your application and identify the associated user account.
 
 ### Obtaining an API Key
 1. Log in to the Gheremiah AI Web Portal.
@@ -23,7 +26,7 @@ x-api-key: your_api_key_here
 
 ## 2. AI Chat API
 
-The primary endpoint for interacting with the AI is the chat endpoint.
+The primary endpoint for interacting with the AI is the chat endpoint. It supports both standard JSON responses and real-time streaming.
 
 ### Endpoint
 `POST /api/chat`
@@ -35,59 +38,107 @@ The primary endpoint for interacting with the AI is the chat endpoint.
 ### Request Body
 | Field | Type | Required | Description |
 | :--- | :--- | :--- | :--- |
-| `messages` | Array | Yes | A list of message objects containing `role` and `content`. |
+| `messages` | Array | Yes | A list of message objects containing `role` (`system`, `user`, `assistant`) and `content`. |
 | `model` | String | No | The model to use (e.g., `gemini-2.5-flash`). Defaults to the backend's current default. |
-| `system` | String | No | An optional system prompt to guide the AI's behavior. |
-| `temperature` | Number | No | Controls randomness (0.0 to 1.0). |
+| `systemPrompt` | String | No | An optional system prompt to guide the AI's behavior. |
+| `temperature` | Number | No | Controls randomness (0.0 to 2.0). |
+| `stream` | Boolean | No | Whether to stream the response using Server-Sent Events (SSE). Defaults to `false`. |
+| `maxTokens` | Number | No | Maximum number of tokens to generate. |
 
-**Example Request Body:**
+### Example: Standard Request (Non-Streaming)
+**Request Body:**
 ```json
 {
   "messages": [
-    { "role": "system", "content": "You are a helpful coding assistant." },
-    { "role": "user", "content": "How do I implement a binary search in TypeScript?" }
+    { "role": "user", "content": "Hello! Who are you?" }
   ],
-  "model": "gemini-2.5-flash",
-  "temperature": 0.7
+  "stream": false
 }
 ```
 
-### Response Format
-The API returns a JSON object containing the AI's response.
-
-**Example Success Response:**
+**Success Response:**
 ```json
 {
   "success": true,
   "data": {
-    "content": "To implement a binary search in TypeScript, you can use the following code...",
+    "id": "uuid-string",
+    "content": "I am Gheremiah AI, your helpful assistant...",
+    "model": "gemini-2.5-flash",
+    "timestamp": "2026-08-18T...",
     "usage": {
-      "promptTokens": 45,
-      "completionTokens": 120,
-      "totalTokens": 165
+      "promptTokens": 10,
+      "completionTokens": 25,
+      "totalTokens": 35
     }
-  }
+  },
+  "timestamp": "2026-08-18T..."
 }
 ```
+
+### Example: Streaming Request
+To receive the response in real-time, set `"stream": true`. The server will respond with `text/event-stream`.
+
+**Request Body:**
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Write a short poem about coding." }
+  ],
+  "stream": true
+}
+```
+
+**Streaming Response Format (SSE):**
+The response consists of a series of data chunks. Each chunk is a JSON object prefixed with `data: `.
+
+```text
+data: {"type": "content", "content": "In "}
+
+data: {"type": "content", "content": "the "}
+
+data: {"type": "content", "content": "realm "}
+
+...
+
+data: {"type": "usage", "usage": {"promptTokens": 12, "completionTokens": 45, "totalTokens": 57}}
+```
+
+---
+
+## 3. Error Handling
+
+The API uses standard HTTP status codes to indicate the success or failure of a request.
+
+| Code | Meaning | Description |
+| :--- | :--- | :--- |
+| `200` | OK | Request successful. |
+| `400` | Bad Request | Validation error in the request body. |
+| `401` | Unauthorized | Invalid or missing API key. |
+| `429` | Too Many Requests | Rate limit exceeded. |
+| `500` | Internal Server Error | An unexpected error occurred on the server. |
 
 **Example Error Response:**
 ```json
 {
   "success": false,
   "error": {
-    "message": "Invalid API Key",
-    "code": "UNAUTHORIZED"
-  }
+    "code": "UNAUTHORIZED",
+    "message": "Invalid API key"
+  },
+  "timestamp": "2026-08-18T..."
 }
 ```
 
 ---
 
-## 3. Rate Limits and Quotas
+## 4. Rate Limits and Quotas
 
-Depending on your account tier, rate limits may apply. If you exceed your quota, the API will return a `429 Too Many Requests` status code. We recommend implementing exponential backoff in your client.
+Rate limits are applied based on the subscription tier of the user associated with the API key. If you exceed your quota, the API will return a `429 Too Many Requests` status code. 
 
-## 4. Best Practices
-- **Secure Your Keys**: Never commit API keys to public repositories. Use environment variables.
-- **Handle Streaming**: The API supports streaming responses via Server-Sent Events (SSE) for real-time UI updates.
+We recommend implementing exponential backoff in your client to handle rate limits gracefully.
+
+## 5. Best Practices
+
+- **Secure Your Keys**: Never commit API keys to public repositories. Use environment variables or a secure secret manager.
 - **Context Management**: To maintain conversation history, you must send the previous messages back to the API in the `messages` array.
+- **Stream Processing**: When using `stream: true`, ensure your client is capable of parsing SSE (Server-Sent Events) to provide a smooth user experience.
