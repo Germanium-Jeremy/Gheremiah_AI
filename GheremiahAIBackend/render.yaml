@@ -14,11 +14,9 @@ services:
         sync: false
       - key: FRONTEND_URL
         sync: false
-      - key: SMTP_HOST
+      - key: SENDGRID_API_KEY
         sync: false
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASS
+      - key: SMTP_FROM
         sync: false
       - key: PORT
         value: 8000
