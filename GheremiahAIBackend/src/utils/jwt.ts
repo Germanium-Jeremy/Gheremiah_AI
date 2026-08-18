@@ -11,7 +11,10 @@ export const generateTokens = (user: Omit<User, 'passwordHash'>) => {
         subscriptionTier: user.subscriptionTier,
     };
     
-    const JWT_SECRET = process.env.JWT_SECRET || '';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined in environment variables');
+    }
     const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRE } as SignOptions);
     const refreshToken = jwt.sign(payload, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRE } as SignOptions);
 
@@ -19,7 +22,10 @@ export const generateTokens = (user: Omit<User, 'passwordHash'>) => {
 };
 
 export const verifyToken = (token: string): TokenPayload | null => {
-    const JWT_SECRET = process.env.JWT_SECRET || '';
+    const JWT_SECRET = process.env.JWT_SECRET;
+    if (!JWT_SECRET) {
+        throw new Error('JWT_SECRET is not defined in environment variables');
+    }
     try {
         return jwt.verify(token, JWT_SECRET) as TokenPayload;
     } catch (error) {
