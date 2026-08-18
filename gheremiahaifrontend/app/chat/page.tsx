@@ -81,20 +81,30 @@ function ChatPageContent() {
         setLoading(true);
 
         try {
+            const accessToken = localStorage.getItem('accessToken');
             const apiKey = localStorage.getItem('apiKey');
 
-            if (!apiKey) {
-                setMessages(prev => [...prev, { role: 'assistant', content: 'Error: No API key found. Please create an API key first.' }]);
+            if (!accessToken && !apiKey) {
+                setMessages(prev => [...prev, { role: 'assistant', content: 'Error: Not authenticated. Please log in or create an API key.' }]);
                 setLoading(false);
                 return;
             }
 
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+            };
+
+            if (accessToken) {
+                headers['Authorization'] = `Bearer ${accessToken}`;
+            }
+
+            if (apiKey) {
+                headers['x-api-key'] = apiKey;
+            }
+
             const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/chat`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                },
+                headers: headers,
                 body: JSON.stringify({
                     messages: [
                         ...messages,
