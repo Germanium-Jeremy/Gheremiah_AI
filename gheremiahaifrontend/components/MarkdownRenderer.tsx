@@ -14,23 +14,29 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
         <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-                code({ node, inline, className, children, ...props }: any) {
+                code({ node, className, children, ...props }: any) {
                     const match = /language-(\w+)/.exec(className || '');
-                    return !inline && match ? (
-                        <SyntaxHighlighter
-                            style={vscDarkPlus}
-                            language={match[1]}
-                            PreTag="div"
-                            className="rounded-lg"
-                            {...props}
-                        >
-                            {String(children).replace(/\n$/, '')}
-                        </SyntaxHighlighter>
-                    ) : (
-                        <code className="bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-sm" {...props}>
+                    if (match) {
+                        return (
+                            <SyntaxHighlighter
+                                style={vscDarkPlus}
+                                language={match[1]}
+                                PreTag="div"
+                                className="rounded-lg my-3"
+                                {...props}
+                            >
+                                {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                        );
+                    }
+                    return (
+                        <code className="bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded text-sm font-mono" {...props}>
                             {children}
                         </code>
                     );
+                },
+                pre({ children }) {
+                    return <>{children}</>;
                 },
                 a({ href, children, ...props }: any) {
                     return (
@@ -69,6 +75,33 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
                 },
                 p({ children }: any) {
                     return <p className="my-2">{children}</p>;
+                },
+                table({ children }: any) {
+                    return (
+                        <div className="overflow-x-auto my-4">
+                            <table className="min-w-full border border-zinc-300 dark:border-zinc-700 rounded-lg">
+                                {children}
+                            </table>
+                        </div>
+                    );
+                },
+                thead({ children }: any) {
+                    return <thead className="bg-zinc-100 dark:bg-zinc-800">{children}</thead>;
+                },
+                tbody({ children }: any) {
+                    return <tbody className="divide-y divide-zinc-200 dark:divide-zinc-700">{children}</tbody>;
+                },
+                tr({ children }: any) {
+                    return <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-750">{children}</tr>;
+                },
+                th({ children }: any) {
+                    return <th className="px-4 py-2 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100 border-b border-zinc-300 dark:border-zinc-700">{children}</th>;
+                },
+                td({ children }: any) {
+                    return <td className="px-4 py-2 text-sm text-zinc-700 dark:text-zinc-300">{children}</td>;
+                },
+                hr() {
+                    return <hr className="my-6 border-zinc-300 dark:border-zinc-700" />;
                 },
             }}
         >
