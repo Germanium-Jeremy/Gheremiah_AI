@@ -52,11 +52,13 @@ router.post('/register', authRateLimiter, async (req: Request, res: Response, ne
         // Send verification email
         try {
             await sendVerificationEmail(email, token);
+            console.log("EMail sent")
         } catch (emailError) {
             console.error('Failed to send verification email:', emailError);
             // Continue with registration even if email fails
         }
 
+        console.log("Continued")
         const userObj = {
             id: (user._id as any).toString(),
             email: user.email,
