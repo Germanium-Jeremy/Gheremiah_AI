@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import { generateTokens, verifyToken, decodeToken } from '../utils/jwt';
 import { User, type IUserDocument } from '../models/User';
 import { ApiKey } from '../models/ApiKey';
 import type { TokenPayload, AuthenticatedRequest } from '@gheremiah-ai/shared';
@@ -13,10 +13,11 @@ declare global {
 }
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    console.log("Authenticating request:", req.method, req.url, "Headers:", req.headers);
     try {
         // Check cookies first, then fallback to Authorization header
         const token = req.cookies?.accessToken || req.headers.authorization?.split(' ')[1];
-        
+
         if (!token) {
             res.status(401).json({
                 success: false,
@@ -29,12 +30,19 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
             return;
         }
 
-        const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-        const payload = jwt.verify(
-            token,
-            jwtSecret
-        ) as TokenPayload;
-        
+        const payload = verifyToken(token);
+        if (!payload) {
+            res.status(401).json({
+                success: false,
+                error: {
+                    code: 'UNAUTHORIZED',
+                    message: 'Invalid or expired token',
+                },
+                timestamp: new Date(),
+            });
+            return;
+        }
+
         const user = await User.findById(payload.userId).select('-passwordHash');
 
         if (!user) {
@@ -305,8 +313,12 @@ export const authenticateAny = async (req: Request, res: Response, next: NextFun
     if (authHeader) {
         try {
             const token = authHeader.replace('Bearer ', '');
-            const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-            const payload = jwt.verify(token, jwtSecret) as TokenPayload;
+            const payload = verifyToken(token);
+
+            if (!payload) {
+                throw new Error('Invalid token');
+            }
+
             const user = await User.findById(payload.userId).select('-passwordHash');
 
             if (user) {
